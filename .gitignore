@@ -2,6 +2,7 @@
 /.venv
 *.csv
 *.xlsx
+*.xlsm
 *.xlsb
 data/Arquivos/
 .ipynb_checkpoints/
