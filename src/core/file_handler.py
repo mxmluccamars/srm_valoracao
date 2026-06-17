@@ -43,7 +43,8 @@ class FileHandler:
                   e a lista com os nomes dos arquivos ausentes.
         """
         # Formata o nome do arquivo dinâmico
-        ciclo_filename = f"Ciclo_P{periodo} N13P {ano} - envio"
+        # Formata o período com 2 dígitos (ex: 1 -> 01) e monta o nome do arquivo dinâmico
+        ciclo_filename = f"Ciclo_P{periodo:02d} N13P {ano} - envio"
         
         all_required_basenames = self.static_files + [ciclo_filename]
         
