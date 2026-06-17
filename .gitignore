@@ -1,6 +1,7 @@
 /venv
+/.venv
 *.csv
 *.xlsx
 *.xlsb
 data/Arquivos/
-.ipynb_checkpo8ints/
+.ipynb_checkpoints/
