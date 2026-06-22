@@ -34,4 +34,19 @@ THEME = {
     "log_background": "#1e272e",        # Preto/Grafite escuro estilo terminal
     "log_text": "#dcdde1",              # Texto cinza claro de alta leitura
     "log_border": "#2f3542",            # Borda discreta para o terminal
+    
+    # Estado: Pendente (Cinza)
+    "card_pending_bg": "#f1f2f6",
+    "card_pending_text": "#7f8c8d",
+    "card_pending_border": "#ced4da",
+
+    # Estado: Encontrado / OK (Verde)
+    "card_success_bg": "#d4edda",
+    "card_success_text": "#155724",
+    "card_success_border": "#c3e6cb",
+
+    # Estado: Ausente / Erro (Vermelho)
+    "card_error_bg": "#f8d7da",
+    "card_error_text": "#721c24",
+    "card_error_border": "#f5c6cb",
 }

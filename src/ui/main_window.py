@@ -1,92 +1,112 @@
 import os
 import sys
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QThread, Signal, QObject
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QLineEdit, QPushButton, QProgressBar, 
-    QTextEdit, QFrame
+    QTextEdit, QFrame, QGridLayout
 )
 from PySide6.QtGui import QFont, QIcon
 
-# Importação da nossa classe de lógica de arquivos
+# Importações do nosso Core (Lógica) e UI (Tema)
 from src.core.file_handler import FileHandler
-
+from src.core.data_processor import DataProcessor
 from src.ui.theme import THEME
 
-# Ativa o ícone correto na barra de tarefas do Windows
-if sys.platform == "win32":
-    import ctypes
-    myappid = "mars.srm.valoracao.1.0"
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+class ProcessingWorker(QObject):
+    """
+    Worker intermediário que executa o processamento de dados em segundo plano.
+    
+    Isso impede que a interface gráfica (UI) trave durante cálculos pesados.
+    """
+    # Sinais que o Worker usará para se comunicar com a interface principal
+    progress_changed = Signal(int)
+    log_emitted = Signal(str)
+    finished = Signal(bool)
+
+    def __init__(self, processor: DataProcessor, file_paths: list, ano: int, periodo: int):
+        super().__init__()
+        self.processor = processor
+        self.file_paths = file_paths
+        self.ano = ano
+        self.periodo = periodo
+
+    def run(self):
+        """Método que roda dentro da Thread secundária."""
+        # Esta função serve de ponte: ela recebe o progresso do DataProcessor
+        # e o emite através dos sinais do Qt para a Janela Principal.
+        def callback(porcentagem: int, mensagem: str):
+            self.progress_changed.emit(porcentagem)
+            self.log_emitted.emit(f"➔ {mensagem}")
+
+        # Executa o processamento real (ou simulado)
+        sucesso = self.processor.process(self.file_paths, self.ano, self.periodo, callback)
+        self.finished.emit(sucesso)
 
 
 class MainWindow(QMainWindow):
     """
     Janela Principal do sistema SRM Valoração.
-    
-    Responsável pela interface visual, captura de dados do usuário,
-    validação de arquivos locais e disparo do processamento.
     """
 
     def __init__(self, font_family: str = "Segoe UI"):
         super().__init__()
 
-        # Instancia as classes de controle
+        self.font_family = font_family
         self.file_handler = FileHandler()
+        
+        # Cria a instância do processador definindo a pasta atual para salvar o resultado
+        self.data_processor = DataProcessor(output_dir=os.getcwd())
+        
         self.verified_files = None
+        self.thread = None  # Guardará a referência da nossa Thread
+        self.worker = None  # Guardará a referência do nosso Worker
 
-        # Configurações de Identidade do App
+        # Configurações de Identidade
         self.nome_do_sistema = "SRM Valoração"
         self.setWindowTitle(self.nome_do_sistema)
         self._set_window_icon()
-        self.font_family = font_family
 
-        # Dimensões da janela
-        self.setMinimumSize(QSize(650, 550))
-        self.resize(700, 600)
+        # Dimensões
+        self.setMinimumSize(QSize(700, 650))
+        self.resize(750, 700)
 
-        # Widget Central e Layout Principal
+        # Widget Central
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
         self.main_layout.setSpacing(15)
         self.main_layout.setContentsMargins(25, 25, 25, 25)
 
-        # Inicializa todos os componentes visuais
+        # Inicializa Componentes
         self._create_header()
         self._create_inputs()
         self._create_buttons()
+        self._create_file_status_grid()
         self._create_progress_bar()
         self._create_log_area()
         self._apply_styles()
 
-        # Conecta os eventos dos botões
+        # Conecta eventos dos botões
         self.btn_verificar.clicked.connect(self._run_file_verification)
+        self.btn_processar.clicked.connect(self._run_data_processing) # ◀️ Conecta o botão processar!
 
-        # Mensagem de boas-vindas no Log
-        self.write_log("▶ Sistema SRM Valoração iniciado com sucesso.")
-        self.write_log("➔ Insira o Ano e o Período nos campos acima e clique em 'Verificar Arquivos'.")
+        self.write_log("▶ SRM Valoração iniciado. Insira Ano/Período e clique em 'Verificar Arquivos'.")
 
     def _set_window_icon(self):
-        """Define o ícone da janela se ele existir na pasta assets."""
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         icon_path = os.path.join(base_path, "assets", "logo.png")
-
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-        else:
-            # Não trava o sistema se o ícone não for encontrado
-            print(f"Aviso: Ícone não encontrado em {icon_path}. Prosseguindo sem ícone personalizado.")
 
     def _create_header(self):
-        """Desenha o cabeçalho superior."""
         self.title_label = QLabel(self.nome_do_sistema, self)
         font = QFont(self.font_family, 18, QFont.Bold)
         self.title_label.setFont(font)
         self.title_label.setAlignment(Qt.AlignCenter)
         self.main_layout.addWidget(self.title_label)
 
-        # Linha divisória fina estilosa
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
@@ -94,14 +114,13 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(line)
 
     def _create_inputs(self):
-        """Cria os campos de texto para Ano e Período."""
         input_layout = QHBoxLayout()
         input_layout.setSpacing(25)
 
         # Campo Ano
         ano_layout = QVBoxLayout()
         self.lbl_ano = QLabel("Ano de Referência:", self)
-        self.lbl_ano.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.lbl_ano.setFont(QFont(self.font_family, 9, QFont.Bold))
         self.txt_ano = QLineEdit(self)
         self.txt_ano.setPlaceholderText("Ex: 2026")
         self.txt_ano.setMaxLength(4)
@@ -111,7 +130,7 @@ class MainWindow(QMainWindow):
         # Campo Período
         periodo_layout = QVBoxLayout()
         self.lbl_periodo = QLabel("Período (Ciclo):", self)
-        self.lbl_periodo.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.lbl_periodo.setFont(QFont(self.font_family, 9, QFont.Bold))
         self.txt_periodo = QLineEdit(self)
         self.txt_periodo.setPlaceholderText("Ex: 1 a 13")
         self.txt_periodo.setMaxLength(2)
@@ -123,7 +142,6 @@ class MainWindow(QMainWindow):
         self.main_layout.addLayout(input_layout)
 
     def _create_buttons(self):
-        """Cria os botões de ação."""
         button_layout = QHBoxLayout()
         button_layout.setSpacing(20)
 
@@ -140,11 +158,54 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.btn_processar)
         self.main_layout.addLayout(button_layout)
 
+    def _create_file_status_grid(self):
+        self.grid_widget = QWidget(self)
+        self.grid_layout = QGridLayout(self.grid_widget)
+        self.grid_layout.setSpacing(10)
+        self.grid_layout.setContentsMargins(0, 5, 0, 5)
+
+        self.files_to_track = {
+            "BASE CLIENTES": "BASE CLIENTES",
+            "BASE PRODUTOS": "BASE PRODUTOS",
+            "ZP39": "ZP39",
+            "ZP52": "ZP52",
+            "ZP53": "ZP53",
+            "ZP54": "ZP54",
+            "ZP55": "ZP55",
+            "ZP70": "ZP70",
+            "ZP73": "ZP73",
+            "CICLO": "Ciclo_P{periodo} N13P {ano} - envio"
+        }
+
+        self.file_cards = {}
+        columns = 2
+        for i, (key, display_name) in enumerate(self.files_to_track.items()):
+            row = i // columns
+            col = i % columns
+
+            card = QLabel(f"⚪  {display_name}", self)
+            card.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            card.setMinimumHeight(35)
+            card.setContentsMargins(15, 0, 15, 0)
+            
+            card.setStyleSheet(f"""
+                border: 1px solid {THEME["card_pending_border"]};
+                border-radius: 6px;
+                background-color: {THEME["card_pending_bg"]};
+                color: {THEME["card_pending_text"]};
+                font-size: 9pt;
+                font-weight: bold;
+            """)
+
+            self.grid_layout.addWidget(card, row, col)
+            self.file_cards[key] = card
+
+        self.main_layout.addWidget(self.grid_widget)
+
     def _create_progress_bar(self):
-        """Cria a barra de progresso."""
         progress_layout = QVBoxLayout()
         self.lbl_progresso = QLabel("Status do Processamento:", self)
-        self.lbl_progresso.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.lbl_progresso.setFont(QFont(self.font_family, 9, QFont.Bold))
         
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setValue(0)
@@ -156,7 +217,6 @@ class MainWindow(QMainWindow):
         self.main_layout.addLayout(progress_layout)
 
     def _create_log_area(self):
-        """Cria a área de texto onde mostramos os logs."""
         log_layout = QVBoxLayout()
         self.lbl_log = QLabel("Log de Atividades:", self)
         self.lbl_log.setFont(QFont(self.font_family, 9, QFont.Bold))
@@ -170,21 +230,56 @@ class MainWindow(QMainWindow):
         self.main_layout.addLayout(log_layout)
 
     def write_log(self, message: str):
-        """Imprime uma linha formatada na caixa de logs."""
         self.log_text.append(message)
         self.log_text.ensureCursorVisible()
 
+    def _update_card_style(self, key: str, state: str, filename: str = None):
+        card = self.file_cards[key]
+        display_name = filename if filename else self.files_to_track[key]
+
+        if state == "success":
+            card.setText(f"✓  {display_name}")
+            card.setStyleSheet(f"""
+                border: 1px solid {THEME["card_success_border"]};
+                border-radius: 6px;
+                background-color: {THEME["card_success_bg"]};
+                color: {THEME["card_success_text"]};
+                font-size: 9pt;
+                font-weight: bold;
+            """)
+        elif state == "error":
+            card.setText(f"✗  {display_name}")
+            card.setStyleSheet(f"""
+                border: 1px solid {THEME["card_error_border"]};
+                border-radius: 6px;
+                background-color: {THEME["card_error_bg"]};
+                color: {THEME["card_error_text"]};
+                font-size: 9pt;
+                font-weight: bold;
+            """)
+        else:
+            card.setText(f"⚪  {display_name}")
+            card.setStyleSheet(f"""
+                border: 1px solid {THEME["card_pending_border"]};
+                border-radius: 6px;
+                background-color: {THEME["card_pending_bg"]};
+                color: {THEME["card_pending_text"]};
+                font-size: 9pt;
+                font-weight: bold;
+            """)
+
     def _run_file_verification(self):
-        """Ação disparada ao clicar no botão 'Verificar Arquivos'."""
         self.log_text.clear()
         self.progress_bar.setValue(0)
         self.btn_processar.setEnabled(False)
         self.verified_files = None
 
+        for key in self.files_to_track.keys():
+            self._update_card_style(key, "pending")
+
         ano_str = self.txt_ano.text().strip()
         periodo_str = self.txt_periodo.text().strip()
 
-        # Validação de campos vazios ou não numéricos
         if not ano_str or not periodo_str:
             self.write_log("⚠️ Erro: Os campos 'Ano de Referência' e 'Período' são obrigatórios.")
             return
@@ -197,24 +292,93 @@ class MainWindow(QMainWindow):
         periodo = int(periodo_str)
         current_dir = os.getcwd()
 
+        ciclo_filename = f"Ciclo_P{periodo} N13P {ano} - envio"
+        self._update_card_style("CICLO", "pending", ciclo_filename)
+
         self.write_log(f"🔎 Analisando diretório para o Ciclo P{periodo} / {ano}...")
         self.write_log(f"📁 Pasta de busca: {current_dir}\n")
 
-        # Chama a validação da classe de lógica
         success, result = self.file_handler.verify_files(current_dir, ano, periodo)
 
         if success:
+            for key in self.file_cards.keys():
+                if key == "CICLO":
+                    self._update_card_style(key, "success", ciclo_filename)
+                else:
+                    self._update_card_style(key, "success")
+            
             self.write_log("✅ Sucesso! Todas as planilhas necessárias foram encontradas.")
             self.write_log("👉 Clique em 'Processar Dados' para iniciar os cálculos.")
             self.verified_files = result
             self.btn_processar.setEnabled(True)
         else:
-            self.write_log("❌ Falha! Alguns arquivos obrigatórios estão ausentes na pasta:")
-            for missing in result:
-                self.write_log(f"   • {missing}.xlsx (ou .xlsm)")
+            missing_basenames = result
+            for key in self.file_cards.keys():
+                actual_name = ciclo_filename if key == "CICLO" else self.files_to_track[key]
+                if actual_name in missing_basenames:
+                    self._update_card_style(key, "error", actual_name)
+                else:
+                    self._update_card_style(key, "success", actual_name)
+
+            self.write_log("❌ Falha! Alguns arquivos obrigatórios estão ausentes (marcados com ✗).")
+
+    # --- INÍCIO DA MUDANÇA (LÓGICA DE PROCESSAMENTO EM SEGUNDO PLANO) ---
+    def _run_data_processing(self):
+        """Inicia o processamento de dados usando uma Thread secundária."""
+        # 1. Bloqueia os botões e inputs para o usuário não mexer durante o cálculo
+        self._toggle_interface_enabled(False)
+        self.progress_bar.setValue(0)
+        self.write_log("\n⚙️ Iniciando esteira de processamento...")
+
+        ano = int(self.txt_ano.text())
+        periodo = int(self.txt_periodo.text())
+
+        # 2. Cria a Thread e o Worker
+        self.thread = QThread()
+        self.worker = ProcessingWorker(
+            processor=self.data_processor,
+            file_paths=self.verified_files,
+            ano=ano,
+            periodo=periodo
+        )
+        
+        # Move o Worker para a Thread de segundo plano
+        self.worker.moveToThread(self.thread)
+
+        # 3. Conecta os sinais do Worker à interface principal
+        self.thread.started.connect(self.worker.run)
+        self.worker.progress_changed.connect(self.progress_bar.setValue)
+        self.worker.log_emitted.connect(self.write_log)
+        
+        # Conecta a finalização
+        self.worker.finished.connect(self._on_processing_finished)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        # 4. Inicia a execução da Thread
+        self.thread.start()
+
+    def _on_processing_finished(self, sucesso: bool):
+        """Chamado quando o Worker conclui o processamento."""
+        # Desbloqueia os botões e inputs da interface
+        self._toggle_interface_enabled(True)
+
+        if sucesso:
+            self.write_log("\n🎉 Processo finalizado com sucesso absoluto!")
+            self.write_log("📂 Sinta-se à vontade para realizar um novo processamento.")
+        else:
+            self.write_log("\n⚠️ Ocorreu um erro durante o processamento. Verifique as planilhas.")
+
+    def _toggle_interface_enabled(self, enabled: bool):
+        """Desativa ou ativa os controles de interface durante processamentos longos."""
+        self.btn_verificar.setEnabled(enabled)
+        self.btn_processar.setEnabled(enabled)
+        self.txt_ano.setEnabled(enabled)
+        self.txt_periodo.setEnabled(enabled)
+    # --- FIM DA MUDANÇA ---
 
     def _apply_styles(self):
-        """Aplica o design visual profissional utilizando o arquivo de tema centralizado."""
         style = f"""
             * {{
                 font-family: "{self.font_family}";
