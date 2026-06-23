@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
             "ZP55": "ZP55",
             "ZP70": "ZP70",
             "ZP73": "ZP73",
-            "CICLO": "Ciclo_P{periodo} N13P {ano} - envio"
+            "CICLO": "Ciclo_P{periodo:02d} N13P {ano} - envio"
         }
 
         self.file_cards = {}
@@ -201,7 +201,7 @@ class MainWindow(QMainWindow):
             self.file_cards[key] = card
 
         self.main_layout.addWidget(self.grid_widget)
-
+ 
     def _create_progress_bar(self):
         progress_layout = QVBoxLayout()
         self.lbl_progresso = QLabel("Status do Processamento:", self)
@@ -254,7 +254,7 @@ class MainWindow(QMainWindow):
                 border-radius: 6px;
                 background-color: {THEME["card_error_bg"]};
                 color: {THEME["card_error_text"]};
-                font-size: 9pt;
+                font-size: 9pt;s
                 font-weight: bold;
             """)
         else:
@@ -292,10 +292,10 @@ class MainWindow(QMainWindow):
         periodo = int(periodo_str)
         current_dir = os.getcwd()
 
-        ciclo_filename = f"Ciclo_P{periodo} N13P {ano} - envio"
+        ciclo_filename = f"Ciclo_P{periodo:02d} N13P {ano} - envio"
         self._update_card_style("CICLO", "pending", ciclo_filename)
 
-        self.write_log(f"🔎 Analisando diretório para o Ciclo P{periodo} / {ano}...")
+        self.write_log(f"🔎 Analisando diretório para o Ciclo P{periodo:02d} / {ano}...")
         self.write_log(f"📁 Pasta de busca: {current_dir}\n")
 
         success, result = self.file_handler.verify_files(current_dir, ano, periodo)
@@ -433,7 +433,7 @@ class MainWindow(QMainWindow):
                 text-align: center;
                 font-weight: bold;
                 background-color: {THEME["progress_bg"]};
-                color: {THEME["text_primary"]};
+                color: {THEME["progress_text"]};
             }}
             QProgressBar::chunk {{
                 background-color: {THEME["progress_chunk"]};

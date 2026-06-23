@@ -7,28 +7,29 @@ Centraliza todas as cores do sistema para fácil manutenção e criação de tem
 THEME = {
     # Cores Gerais da Janela
     "window_background": "#000000",     # Cinza bem claro
-    "text_primary": "#ffbe0c",          # Azul escuro corporativo para textos
+    "text_primary": "#df500d",          # Azul escuro corporativo para textos
     "input_background": "#cacaca",      # Branco para campos de texto
     "border_color": "#818181",          # Cinza para bordas suaves
     "primary_focus": "#797979",         # Azul brilhante para foco/seleção
 
     # Botão Padrão (Verificar Arquivos)
-    "btn_default_bg": "#ffbe0c",        # Azul escuro
-    "btn_default_hover": "#df500d",     # Azul cinzento ao passar o mouse
-    "btn_default_pressed": "#1a252f",   # Azul bem escuro ao clicar
+    "btn_default_bg": "#df500d",        # Azul escuro
+    "btn_default_hover": "#df4f0d7d",     # Azul cinzento ao passar o mouse
+    "btn_default_pressed": "#df4f0d37",   # Azul bem escuro ao clicar
 
     # Botão de Ação Principal (Processar)
-    "btn_success_bg": "#ffbe0c",        # Verde
-    "btn_success_hover": "#df500d",     # Verde claro ao passar o mouse
-    "btn_success_pressed": "#1a252f",   # Verde escuro ao clicar
+    "btn_success_bg": "#df500d",        # Verde
+    "btn_success_hover": "#df4f0d7d",     # Verde claro ao passar o mouse
+    "btn_success_pressed": "#df4f0d37",   # Verde escuro ao clicar
 
     # Botão Desabilitado
     "btn_disabled_bg": "#bdc3c7",       # Cinza claro desabilitado
     "btn_disabled_text": "#7f8c8d",     # Texto cinza escuro desabilitado
 
     # Barra de Progresso
-    "progress_bg": "#e9ecef",           # Fundo da barra cinza claro
-    "progress_chunk": "#2ecc71",        # Enchimento da barra em verde vibrante
+    "progress_bg": "#df500d",           # Fundo da barra cinza claro
+    "progress_chunk": "#ffffff",        # Enchimento da barra em verde vibrante
+    "progress_text": "#000000",         # Texto da barra em branco para contraste
 
     # Caixa de Logs (Terminal)
     "log_background": "#1e272e",        # Preto/Grafite escuro estilo terminal

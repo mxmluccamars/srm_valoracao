@@ -2,6 +2,7 @@ import os
 import time
 from typing import List, Callable
 import pandas as pd
+import numpy as np
 
 class DataProcessor:
     """
@@ -39,51 +40,117 @@ class DataProcessor:
             bool: True se o processamento foi concluído com sucesso, False caso contrário.
         """
         try:
-            total_steps = 4
-            
-            # ---------------------------------------------------------
-            # Etapa 1: Carregar os arquivos
-            # ---------------------------------------------------------
-            progress_callback(10, "Iniciando processamento... Lendo arquivos Excel.")
-            time.sleep(1.0) # Simula o tempo de leitura dos arquivos
-            
-            # Exemplo de como você começará a carregar no futuro:
-            # path_clientes = [p for p in file_paths if "BASE CLIENTES" in p][0]
-            # df_clientes = pd.read_excel(path_clientes)
-            
-            progress_callback(30, "Arquivos carregados na memória com sucesso.")
 
-            # ---------------------------------------------------------
-            # Etapa 2: Aplicar Regras de Negócio (Onde você colocará seu código do notebook)
-            # ---------------------------------------------------------
-            progress_callback(50, f"Aplicando regras de valoração para o ciclo P{periodo}/{ano}...")
-            time.sleep(1.5) # Simula o tempo dos cálculos pesados do Pandas
-            
-            # Exemplo de dataframe temporário que será gerado pelo seu cálculo:
-            df_resultado_exemplo = pd.DataFrame({
-                "Cliente_ID": [1, 2, 3],
-                "Valoracao_Calculada": [1500.50, 2300.00, 450.25],
-                "Ciclo": [f"P{periodo}"] * 3,
-                "Ano": [ano] * 3
-            })
-            
-            progress_callback(80, "Cálculos matemáticos e cruzamentos concluídos.")
+            progress_callback(0, "Iniciando processamento...")
+            time.sleep(1.5)
 
-            # ---------------------------------------------------------
-            # Etapa 3: Exportar Resultados
-            # ---------------------------------------------------------
-            progress_callback(90, "Formatando e gerando planilha de saída...")
-            time.sleep(1.0) # Simula a gravação do arquivo
+            # Importação do Ciclo, Clientes e Produtos
+
+            progress_callback(6, "Lendo Ciclo N13P.")
+            time.sleep(1.5)
+
+            progress_callback(12, "Lendo Base de Clientes.")
+            time.sleep(1.5)
+
+            progress_callback(18, "Lendo Base de Produtos.")
+            time.sleep(1.5) 
+
+
+            # ZP55 e ZP54
+            progress_callback(21, "Calculando ZP55.")
+            time.sleep(1.5)
+
+            progress_callback(24, "Calculando ZP54.")
+            time.sleep(1.5)
+
+            # GSV
+
+            progress_callback(29, "Calculando GSVs.")
+            time.sleep(1.5)
+
+            # Projeções
+
+            progress_callback(35, "Calculando Projeções.")
+            time.sleep(1.5)
+
+            # ZP53, ZP52, ZP73, ZP70 e ZP39
+
+            progress_callback(37, "Calculando ZP53.")
+            time.sleep(1.5)
+
+            progress_callback(39, "Calculando ZP52.")
+            time.sleep(1.5)
+
+            progress_callback(41, "Calculando ZP73.")
+            time.sleep(1.5)
+
+            progress_callback(43, "Calculando ZP70.")
+            time.sleep(1.5)
+
+            progress_callback(45, "Calculando ZP39.")
+            time.sleep(1.5)
+
+
+            # NIV
+
+            progress_callback(50, "Calculando NIV.")
+            time.sleep(1.5)
+
+
+            # Exportação
+
+            progress_callback(75, "Exportando resultados.")
+            time.sleep(2)
+
+            progress_callback(90, "Finalizando exportação.")
+            time.sleep(1.5)
+
             
-            output_file = os.path.join(self.output_dir, f"RESULTADO_VALORACAO_P{periodo}_{ano}.xlsx")
             
-            # Salva o arquivo de exemplo
-            df_resultado_exemplo.to_excel(output_file, index=False)
             
-            # ---------------------------------------------------------
-            # Etapa 4: Conclusão
-            # ---------------------------------------------------------
-            progress_callback(100, f"Sucesso! Planilha gerada em: {output_file}")
+            # # ---------------------------------------------------------
+            # # Etapa 1: Carregar os arquivos
+            # # ---------------------------------------------------------
+            # progress_callback(10, "Iniciando processamento... Lendo arquivos Excel.")
+            # time.sleep(1.0) # Simula o tempo de leitura dos arquivos
+            
+            # # Exemplo de como você começará a carregar no futuro:
+            # # path_clientes = [p for p in file_paths if "BASE CLIENTES" in p][0]
+            # # df_clientes = pd.read_excel(path_clientes)
+            
+            # progress_callback(30, "Arquivos carregados na memória com sucesso.")
+
+            # # ---------------------------------------------------------
+            # # Etapa 2: Aplicar Regras de Negócio (Onde você colocará seu código do notebook)
+            # # ---------------------------------------------------------
+            # progress_callback(50, f"Aplicando regras de valoração para o ciclo P{periodo}/{ano}...")
+            # time.sleep(1.5) # Simula o tempo dos cálculos pesados do Pandas
+            
+            # # Exemplo de dataframe temporário que será gerado pelo seu cálculo:
+            # df_resultado_exemplo = pd.DataFrame({
+            #     "Cliente_ID": [1, 2, 3],
+            #     "Valoracao_Calculada": [1500.50, 2300.00, 450.25],
+            #     "Ciclo": [f"P{periodo}"] * 3,
+            #     "Ano": [ano] * 3
+            # })
+            
+            # progress_callback(80, "Cálculos matemáticos e cruzamentos concluídos.")
+
+            # # ---------------------------------------------------------
+            # # Etapa 3: Exportar Resultados
+            # # ---------------------------------------------------------
+            # progress_callback(90, "Formatando e gerando planilha de saída...")
+            # time.sleep(1.0) # Simula a gravação do arquivo
+            
+            # output_file = os.path.join(self.output_dir, f"RESULTADO_VALORACAO_P{periodo}_{ano}.xlsx")
+            
+            # # Salva o arquivo de exemplo
+            # df_resultado_exemplo.to_excel(output_file, index=False)
+            
+            # # ---------------------------------------------------------
+            # # Etapa 4: Conclusão
+            # # ---------------------------------------------------------
+            progress_callback(100, f"Sucesso! Planilha Salva!")
             return True
 
         except Exception as e:
