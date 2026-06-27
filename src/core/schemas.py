@@ -69,7 +69,11 @@ BASE_CLIENTES_SCHEMA = ExcelSheetSchema(
     engine="openpyxl",
     dtypes={
         "COD_CLIENTE": str,
-        "CNPJ": str
+        'COD REDE': str,
+        'COD SUBREDE': str,
+        'COND. PAG': str,
+        'CDO GP': str,
+
     },
     required_columns=[
         "COD_CLIENTE", "NOME_CLIENTE", "REGIONAL", "UF"
@@ -82,21 +86,116 @@ BASE_PRODUTOS_SCHEMA = ExcelSheetSchema(
     engine="openpyxl",
     dtypes={
         'EAN': str, 
+        'Descrição': str,
         'SKU': str,
+        'Family Price': str,
         'Ton/CDA': float, 
         'Unid/\nCX	': float, 
+        'Origem': str,
         'Hierarquia': str,
         'NCM': str,
         'kg/Un': float,
+        'Class.': str,
         'H05': str,
         'LSV': float
     },
     required_columns=[
-        "EAN", "SKU", "Desc. SKU", "Marca", "Classificação"
+        "EAN", "SKU", "Descrição", "Family Price", "Class.",
+        "Ton/CDA", "Unid/\nCX	", "Origem", "Hierarquia", "NCM",
+        "kg/Un", "H05", "LSV"
     ]
+)
 
 
+BASE_ZP55_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP55",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro"
+    ]
+)
 
+BASE_ZP54_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP54",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro"
+    ]
+)
 
+BASE_ZP53_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP53",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+        'P\'ANO_FIM': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro", "P'ANO_FIM"
+    ]
+)
 
+BASE_ZP52_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP52",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro"
+    ]
+)
+
+BASE_ZP73_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP73",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro"
+    ]
+)
+
+BASE_ZP70_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP70",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CONDICAO DE PAGAMENTO': str,
+        'Desconto' : float,
+    },
+    required_columns=[
+        'CONDICAO DE PAGAMENTO', 'Desconto'
+    ]
+)
+
+BASE_ZP39_SCHEMA = ExcelSheetSchema(
+    display_name="Base de ZP39",
+    header_row=1,
+    engine="openpyxl",
+    dtypes={
+        'CHAVE': str,
+        'Cadastro': str,
+        'P\'ANO_FIM': str,
+    },
+    required_columns=[
+        "CHAVE", "Cadastro", "P'ANO_FIM"
+    ]
 )

@@ -120,3 +120,16 @@ class DataProcessor:
         except Exception as e:
             progress_callback(100, f"Erro inesperado no processamento: {str(e)}")
             return False
+
+
+
+
+
+
+
+
+result = [
+    'col1' =  keys: 'uf', 'ano';
+    'col2' = keys: 'ncm', 'uf'
+]
+
