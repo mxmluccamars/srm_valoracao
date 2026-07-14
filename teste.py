@@ -123,7 +123,52 @@ class DataProcessor:
 
 
 
+# Dicionário de busca rápida
+dic_zp = df_zp55.drop_duplicates(subset=['CHAVE'], keep='first').set_index('CHAVE')['Cadastro'].to_dict()
 
+# 2. LOOP MÁGICO: Cria as colunas de resultados de forma totalmente automatizada!
+colunas_calculadas = []
+
+for rule in BASE_ZP55_SCHEMA.mapping_rules:
+    # Cria uma lista temporária para guardar as séries de strings tratadas
+    key_series_list = []
+    
+    for col in rule.key_components:
+        # Garante que a coluna no DataFrame principal é lida como String limpa
+        serie = df_ciclo_n13[col].astype(str).str.strip()
+        
+        # Se houver limite de fatiamento para esta coluna (ex: [:10]), aplica o slice
+        if rule.slice_limits and col in rule.slice_limits:
+            limit = rule.slice_limits[col]
+            serie = serie.str[:limit]
+            
+        key_series_list.append(serie)
+    
+    # Concatena todas as colunas da chave usando '_' como separador
+    # Ex: 'Company Code' + '_' + 'COD_CLIENTE' + '_' + 'Hierarquia'
+    chave_composta = key_series_list[0]
+    for serie_adicional in key_series_list[1:]:
+        chave_composta = chave_composta + '_' + serie_adicional
+        
+    # Mapeia contra o dicionário da ZP e divide por 100
+    df_ciclo_n13[rule.target_column] = (chave_composta.map(dic_zp) / 100)
+    colunas_calculadas.append(rule.target_column)
+
+# 3. RESOLUÇÃO HIERÁRQUICA AUTOMÁTICA (Usando as colunas calculadas no loop)
+# Iniciamos a nossa coluna final da ZP vazia
+df_ciclo_n13['ZP55'] = df_ciclo_n13[colunas_calculadas[0]]
+
+# Fazemos o fillna em cascata de forma dinâmica para todas as outras colunas geradas pelo loop!
+for col in colunas_calculadas[1:]:
+    df_ciclo_n13['ZP55'] = df_ciclo_n13['ZP55'].fillna(df_ciclo_n13[col])
+
+df_ciclo_n13['ZP55'] = df_ciclo_n13['ZP55'].round(4)
+
+# Como o 'CLIENTE_FALLBACK' foi uma coluna intermediária de teste, podemos deletá-la se quiser:
+df_ciclo_n13.drop(columns=['CLIENTE_FALLBACK'], inplace=True, errors='ignore')
+
+tempo_zp55 = time.time() - inicio_zp55
+print(f"✅ ZP55 processed dynamically in {tempo_zp55:.2f}s!")
 
 
 
@@ -133,3 +178,85 @@ result = [
     'col2' = keys: 'ncm', 'uf'
 ]
 
+inicio_zp54 = time.time()
+
+# 1. Importação da ZP54 usando o Schema
+df_zp54 = pd.read_excel(
+    '../data/ZP54.xlsx', 
+    header=BASE_ZP54_SCHEMA.header_row,
+    usecols=BASE_ZP54_SCHEMA.required_columns,
+    dtype=BASE_ZP54_SCHEMA.dtypes,
+    engine=BASE_ZP54_SCHEMA.engine
+)
+
+df_zp54['Cadastro'] = pd.to_numeric(df_zp54['Cadastro'], errors='coerce').fillna(0.0)
+df_zp54['Cadastro'] = df_zp54['Cadastro'].round(4)
+df_zp54['CHAVE'] = df_zp54['CHAVE'].astype(str).str.strip()
+
+# Dicionário de busca rápida
+dic_zp54 = df_zp54.drop_duplicates(subset=['CHAVE'], keep='first').set_index('CHAVE')['Cadastro'].to_dict()
+
+colunas_calculadas = []
+
+# 2. Loop Dinâmico com suporte a caracteres de espaçamento
+for rule in BASE_ZP54_SCHEMA.mapping_rules:
+    key_series_list = []
+    
+    for col in rule.key_components:
+        # --- NOVIDADE: VERIFICAÇÃO INTELIGENTE DE COLUNA VS CONSTANTE ---
+        if col in df_ciclo_n13.columns:
+            # Se for uma coluna real, puxa os dados e trata
+            serie = df_ciclo_n13[col].astype(str).str.strip()
+            
+            # Aplica fatiamento de caracteres se definido (ex: [:10])
+            if rule.slice_limits and col in rule.slice_limits:
+                limit = rule.slice_limits[col]
+                serie = serie.str[:limit]
+        else:
+            # Se não for uma coluna (como ' ' ou '_'), cria uma série com o caractere repetido para cada linha
+            # Isso impede o KeyError de acontecer!
+            serie = pd.Series([col] * len(df_ciclo_n13), index=df_ciclo_n13.index)
+            
+        key_series_list.append(serie)
+    
+    # Concatena os componentes da chave usando '_' como separador
+    chave_composta = key_series_list[0]
+    for serie_adicional in key_series_list[1:]:
+        chave_composta = chave_composta + '_' + serie_adicional
+        
+    # Mapeia contra o dicionário da ZP e divide por 100
+    df_ciclo_n13[rule.target_column] = (chave_composta.map(dic_zp54).fillna(0.0) / 100)
+    colunas_calculadas.append(rule.target_column)
+
+# 3. Resolução hierárquica automática
+df_ciclo_n13['ZP54'] = df_ciclo_n13[colunas_calculadas[0]]
+
+for col in colunas_calculadas[1:]:
+    df_ciclo_n13['ZP54'] = df_ciclo_n13['ZP54'].fillna(df_ciclo_n13[col])
+
+df_ciclo_n13['ZP54'] = df_ciclo_n13['ZP54'].round(4)
+
+tempo_zp54 = time.time() - inicio_zp54
+print(f"✅ ZP54 processed dynamically with separator-safety in {tempo_zp54:.2f}s!")
+
+
+
+
+
+
+    # -------------------------------------------------------------------------
+    # CONCATENAÇÃO INTELIGENTE DE CHAVES (Evita sublinhados duplos ao redor de espaços)
+    # -------------------------------------------------------------------------
+    chave_composta = key_series_list[0]
+    
+    for i in range(1, len(key_series_list)):
+        componente_atual = rule.key_components[i]
+        componente_anterior = rule.key_components[i - 1]
+        
+        # Regra: Se o componente atual ou o anterior for apenas um espaço em branco " ",
+        # nós juntamos eles DIRETAMENTE (sem adicionar o sublinhado "_")
+        if componente_atual == " " or componente_anterior == " ":
+            chave_composta = chave_composta + key_series_list[i]
+        else:
+            # Caso contrário, junta usando o sublinhado padrão
+            chave_composta = chave_composta + '_' + key_series_list[i]

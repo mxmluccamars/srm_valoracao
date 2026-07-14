@@ -1,3 +1,7 @@
+# TODO terminar de criar os schemes e atualizar no script principal
+
+
+
 """
 Definição dos Esquemas (Schemas) de Dados do SRM Valoração.
 
@@ -7,7 +11,21 @@ críticas e validações necessárias para garantir a integridade do processamen
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Optional, Tuple
+
+dataclass
+class MappingRule:
+    """
+    Define uma regra de composição de chaves para buscar valores em tabelas ZP.
+    
+    Attributes:
+        target_column (str): Nome da coluna resultante onde o valor mapeado será salvo.
+        key_components (List[str]): Lista de colunas do DataFrame principal que formam a chave.
+        slice_limits (Optional[Dict[str, int]]): Dicionário para limitar caracteres de colunas (ex: {'Hierarquia': 10})
+    """
+    target_column: str
+    key_components: List[str]
+    slice_limits: Optional[Dict[str, int]] = None
 
 
 @dataclass
@@ -30,6 +48,7 @@ class ExcelSheetSchema:
     engine: str = "openpyxl"
     dtypes: Dict[str, Type] = field(default_factory=dict)
     required_columns: List[str] = field(default_factory=list)
+    mapping_rules: List[MappingRule] = field(default_factory=list)
 
     def get_missing_columns(self, df_columns: List[str]) -> List[str]:
         """
@@ -65,7 +84,7 @@ CICLO_N13_SCHEMA = ExcelSheetSchema(
 
 BASE_CLIENTES_SCHEMA = ExcelSheetSchema(
     display_name="Base de Clientes",
-    header_row=0,  # O cabeçalho está na primeira linha (linha indexada como 0)
+    header_row=0,  
     engine="openpyxl",
     dtypes={
         "COD_CLIENTE": str,
@@ -82,7 +101,7 @@ BASE_CLIENTES_SCHEMA = ExcelSheetSchema(
 
 BASE_PRODUTOS_SCHEMA = ExcelSheetSchema(
     display_name="Base de Produtos",
-    header_row=0,  # O cabeçalho está na primeira linha (linha indexada como 0)
+    header_row=0,  
     engine="openpyxl",
     dtypes={
         'EAN': str, 
@@ -117,6 +136,30 @@ BASE_ZP55_SCHEMA = ExcelSheetSchema(
     },
     required_columns=[
         "CHAVE", "Cadastro"
+    ],
+    mapping_rules=[
+        MappingRule(
+            target_column = 'CLIENTE',
+            key_components = ['Company Code', 'COD_CLIENTE', 'Hierarquia']
+        ),
+        MappingRule(
+            target_column = 'CLIENTE_H10',
+            key_components = ['Company Code', 'COD_CLIENTE', 'Hierarquia'],
+            slice_limits={"Hierarquia": 10}
+        ), 
+        MappingRule(
+            target_column = 'CD + UF DESTINO + Importação',
+            key_components = ['CD', 'UF', 'Origem']
+        ), 
+        MappingRule(
+            target_column = 'CD + UF DESTINO + NCM',
+            key_components = ['CD', 'UF', 'NCM']
+        ), 
+        MappingRule(
+            target_column = 'CD + UF DESTINO + H05',
+            key_components = ['CD', 'UF', 'Hierarquia'],
+            slice_limits={"Hierarquia": 10}
+        ), 
     ]
 )
 
@@ -126,10 +169,29 @@ BASE_ZP54_SCHEMA = ExcelSheetSchema(
     engine="openpyxl",
     dtypes={
         'CHAVE': str,
-        'Cadastro': str,
+        'Cadastro': float,
     },
     required_columns=[
         "CHAVE", "Cadastro"
+    ],
+    mapping_rules=[
+        MappingRule(
+            target_column = '1. CLIENTE',
+            key_components = ['Company Code', 'COD_CLIENTE', 'Hierarquia']
+        ),
+        MappingRule(
+            target_column = '1. REDE',
+            key_components = ['Company Code', 'COD SUBREDE', 'Hierarquia'],
+        ), 
+        MappingRule(
+            target_column = '1. GP UF HIER 6',
+            key_components = ['Company Code', 'CÓD GP', ' ','UF', 'Hierarquia'],
+        ), 
+        MappingRule(
+            target_column = '1. GP UF HIER 5',
+            key_components = ['Company Code', 'CÓD GP', ' ','UF', 'Hierarquia'],
+            slice_limits={"Hierarquia": 10}
+        ), 
     ]
 )
 
@@ -139,7 +201,7 @@ BASE_ZP53_SCHEMA = ExcelSheetSchema(
     engine="openpyxl",
     dtypes={
         'CHAVE': str,
-        'Cadastro': str,
+        'Cadastro': float,
         'P\'ANO_FIM': str,
     },
     required_columns=[
