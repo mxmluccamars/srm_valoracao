@@ -1,262 +1,166 @@
-import os
-import time
-from typing import List, Callable
-import pandas as pd
+# Célula 16 - Exportação Avançada 3.0 (Bordas Customizadas, Chunks e Fontes Mars Centra)
+inicio_export = time.time()
 
-# Supondo que as suas listas de colunas (cols_base, cols_produtos, etc.) estejam definidas aqui...
-
-class DataProcessor:
-    def __init__(self, output_dir: str):
-        self.output_dir = output_dir
-
-    def process(self, file_paths: List[str], ano: int, periodo: int, progress_callback: Callable[[int, str], None]) -> bool:
-        try:
-            # [Seus passos anteriores de cálculo e leitura aqui...]
-            # Digamos que ao chegar na exportação, já tenhamos corrido até 50% do progresso geral.
-            
-            progress_callback(50, "Cálculos concluídos! Preparando exportação formatada para o Excel...")
-            
-            # DataFrame final que você gerou
-            df_ciclo_n13 = ... 
-
-            # Definindo o nome do arquivo final de saída
-            output_file = os.path.join(self.output_dir, f"RESULTADO_VALORACAO_P{periodo}_{ano}.xlsx")
-            
-            # Iniciando o temporizador igual ao seu código
-            inicio_export = time.time()
-
-            # Criamos o writer do pandas/xlsxwriter
-            writer = pd.ExcelWriter(output_file, engine='xlsxwriter')
-            
-            # --- NOVIDADE: EXPORTAÇÃO EM PEDAÇOS (CHUNKS) ---
-            total_linhas = len(df_ciclo_n13)
-            tamanho_chunk = 5000  # Gravamos de 5 em 5 mil linhas por vez
-            
-            # O processo de salvar no Excel vai ocupar dos 50% aos 90% da barra de progresso da tela
-            progresso_inicial = 50
-            progresso_final = 90
-            margem_progresso = progresso_final - progresso_inicial
-
-            for i in range(0, total_linhas, tamanho_chunk):
-                # Corta o dataframe no pedaço atual
-                chunk = df_ciclo_n13.iloc[i : i + tamanho_chunk]
-                
-                # Se for o primeiro pedaço, grava com cabeçalho. 
-                # Se forem os próximos, começamos na linha abaixo (i + 1) e pulamos o cabeçalho (header=False)
-                if i == 0:
-                    chunk.to_excel(writer, sheet_name='Valoracao', index=False, startrow=0, header=True)
-                else:
-                    chunk.to_excel(writer, sheet_name='Valoracao', index=False, startrow=i + 1, header=False)
-                
-                # Calcula o progresso dinâmico das linhas salvas
-                linhas_processadas = min(i + tamanho_chunk, total_linhas)
-                porcentagem_linhas = linhas_processadas / total_linhas
-                
-                # Transforma isso na escala de 50% a 90% da barra
-                progresso_atual = int(progresso_inicial + (porcentagem_linhas * margem_progresso))
-                
-                # Atualiza a tela do usuário!
-                progress_callback(
-                    progresso_atual, 
-                    f"Salvando linhas no Excel: {linhas_processadas:,} de {total_linhas:,} concluídas..."
-                )
-
-            # -----------------------------------------------------------------
-            # APLICAÇÃO DOS SEUS ESTILOS (Cabeçalhos e Largura de Coluna)
-            # -----------------------------------------------------------------
-            progress_callback(92, "Aplicando formatação de cores e auto-ajuste de colunas...")
-            
-            workbook  = writer.book
-            worksheet = writer.sheets['Valoracao']
-
-            # Estilos que você definiu
-            estilo_header = {'bold': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'}
-            fmt_padrao   = workbook.add_format({**estilo_header, 'bg_color': '#FFFFFF'}) 
-            fmt_roxo     = workbook.add_format({**estilo_header, 'bg_color': "#7E306A", 'font_color': "#FFFFFF"})
-            fmt_vermelho = workbook.add_format({**estilo_header, 'bg_color': "#DF3416", 'font_color': "#FFFFFF"})
-            fmt_azul     = workbook.add_format({**estilo_header, 'bg_color': "#0753A5", 'font_color': "#FFFFFF"})
-            fmt_cinza    = workbook.add_format({**estilo_header, 'bg_color': "#5A5A5A", 'font_color': "#FFFFFF"})
-            fmt_agua     = workbook.add_format({**estilo_header, 'bg_color': "#00FFFF", 'font_color': "#000000"})
-            fmt_verde    = workbook.add_format({**estilo_header, 'bg_color': "#06E92C", 'font_color': "#000000"})
-
-            # Seu loop original de aplicação de cores nas colunas
-            for col_num, col_nome in enumerate(df_ciclo_n13.columns):
-                if col_nome in cols_base:
-                    formato = fmt_padrao
-                elif col_nome in cols_produtos:
-                    formato = fmt_roxo
-                elif col_nome == col_ean:
-                    formato = fmt_vermelho
-                elif col_nome in cols_zps:
-                    formato = fmt_azul
-                elif col_nome in cols_financeiras:
-                    formato = fmt_agua
-                elif col_nome in cols_chaves:
-                    formato = fmt_cinza
-                elif col_nome in cols_financeiras or col_nome.startswith(('GSV R$', 'TON P')):
-                    formato = fmt_verde
-                else:
-                    formato = fmt_padrao
-
-                # Aplica o estilo na linha 0 (cabeçalho)
-                worksheet.write(0, col_num, col_nome, formato)
-                
-                # Auto-ajuste de largura
-                largura = max(len(col_nome), 10) + 2
-                worksheet.set_column(col_num, col_num, largura)
-
-            # -----------------------------------------------------------------
-            # FINALIZAÇÃO DO ARQUIVO (O fechamento física do arquivo no disco)
-            # -----------------------------------------------------------------
-            progress_callback(95, "Finalizando gravação do arquivo físico no disco...")
-            writer.close()
-
-            fim_export = time.time()
-            tempo_exportacao = fim_export - inicio_export
-            
-            progress_callback(100, f"Sucesso! Exportação concluída em {tempo_exportacao:.1f}s.")
-            return True
-
-        except Exception as e:
-            progress_callback(100, f"Erro inesperado no processamento: {str(e)}")
-            return False
-
-
-
-# Dicionário de busca rápida
-dic_zp = df_zp55.drop_duplicates(subset=['CHAVE'], keep='first').set_index('CHAVE')['Cadastro'].to_dict()
-
-# 2. LOOP MÁGICO: Cria as colunas de resultados de forma totalmente automatizada!
-colunas_calculadas = []
-
-for rule in BASE_ZP55_SCHEMA.mapping_rules:
-    # Cria uma lista temporária para guardar as séries de strings tratadas
-    key_series_list = []
-    
-    for col in rule.key_components:
-        # Garante que a coluna no DataFrame principal é lida como String limpa
-        serie = df_ciclo_n13[col].astype(str).str.strip()
-        
-        # Se houver limite de fatiamento para esta coluna (ex: [:10]), aplica o slice
-        if rule.slice_limits and col in rule.slice_limits:
-            limit = rule.slice_limits[col]
-            serie = serie.str[:limit]
-            
-        key_series_list.append(serie)
-    
-    # Concatena todas as colunas da chave usando '_' como separador
-    # Ex: 'Company Code' + '_' + 'COD_CLIENTE' + '_' + 'Hierarquia'
-    chave_composta = key_series_list[0]
-    for serie_adicional in key_series_list[1:]:
-        chave_composta = chave_composta + '_' + serie_adicional
-        
-    # Mapeia contra o dicionário da ZP e divide por 100
-    df_ciclo_n13[rule.target_column] = (chave_composta.map(dic_zp) / 100)
-    colunas_calculadas.append(rule.target_column)
-
-# 3. RESOLUÇÃO HIERÁRQUICA AUTOMÁTICA (Usando as colunas calculadas no loop)
-# Iniciamos a nossa coluna final da ZP vazia
-df_ciclo_n13['ZP55'] = df_ciclo_n13[colunas_calculadas[0]]
-
-# Fazemos o fillna em cascata de forma dinâmica para todas as outras colunas geradas pelo loop!
-for col in colunas_calculadas[1:]:
-    df_ciclo_n13['ZP55'] = df_ciclo_n13['ZP55'].fillna(df_ciclo_n13[col])
-
-df_ciclo_n13['ZP55'] = df_ciclo_n13['ZP55'].round(4)
-
-# Como o 'CLIENTE_FALLBACK' foi uma coluna intermediária de teste, podemos deletá-la se quiser:
-df_ciclo_n13.drop(columns=['CLIENTE_FALLBACK'], inplace=True, errors='ignore')
-
-tempo_zp55 = time.time() - inicio_zp55
-print(f"✅ ZP55 processed dynamically in {tempo_zp55:.2f}s!")
-
-
-
-
-result = [
-    'col1' =  keys: 'uf', 'ano';
-    'col2' = keys: 'ncm', 'uf'
+# ==============================================================================
+# 1. CATEGORIAS DE COLUNAS PARA ESTILIZAÇÃO
+# ==============================================================================
+col_branco = [
+    'Tipo 1', 'Tipo 2', 'Tipo 3', 'Regional', 'GP', 'Vend.', 'Gerente', 'Rede', 'COD_CLIENTE',
+    'Company Code', 'CD', 'NOME_CLIENTE', 'UF DESTINO', 'Região', 'EAN', 'SKU', 'Desc. SKU', 'Classificação',
+    'Tech', 'Tech 2', 'Subbrand', 'Size', 'Nivel 3 HieraR', 'Marca'
 ]
 
-inicio_zp54 = time.time()
+col_roxo = [
+    'COND. PAG', 'COD REDE', 'COD SUBREDE', 'COD GP', 'Family Price', 'Hierarquia', 
+    'Class.', 'NCM', 'Origem', 'kg/Un', 'Ton/CDA', 'Unid/CX', 'LSV', 'UF ORIGEM'
+]
 
-# 1. Importação da ZP54 usando o Schema
-df_zp54 = pd.read_excel(
-    '../data/ZP54.xlsx', 
-    header=BASE_ZP54_SCHEMA.header_row,
-    usecols=BASE_ZP54_SCHEMA.required_columns,
-    dtype=BASE_ZP54_SCHEMA.dtypes,
-    engine=BASE_ZP54_SCHEMA.engine
-)
+col_vermelho = 'EAN Espelho'
 
-df_zp54['Cadastro'] = pd.to_numeric(df_zp54['Cadastro'], errors='coerce').fillna(0.0)
-df_zp54['Cadastro'] = df_zp54['Cadastro'].round(4)
-df_zp54['CHAVE'] = df_zp54['CHAVE'].astype(str).str.strip()
+col_azul = ['ZP55', 'ZP54', 'ZP53', 'ZP53d', 'ZP52', 'ZP73', 'ZP70', 'ZP39', 'ZP39d']
 
-# Dicionário de busca rápida
-dic_zp54 = df_zp54.drop_duplicates(subset=['CHAVE'], keep='first').set_index('CHAVE')['Cadastro'].to_dict()
+col_agua = ['GSV/CDA', 'GSV/TON', 'NIV/CDA', 'NIV/TON']
 
-colunas_calculadas = []
+col_cinza = [
+    'ZP55 CLIENTE', 'ZP55 CLIENTE H05', 'ZP55 CD + UF DESTINO + Importação', 'ZP55 CD + UF DESTINO + NCM', 'ZP55 CD + UF DESTINO + H05',
+    'ZP54 CLIENTE', 'ZP54 REDE', 'ZP54 GP UF HIER 6', 'ZP54 GP UF HIER 5'
+]
 
-# 2. Loop Dinâmico com suporte a caracteres de espaçamento
-for rule in BASE_ZP54_SCHEMA.mapping_rules:
-    key_series_list = []
+col_c_escuro = [
+    'ZP53 EMISSOR', 'ZP53 REDE', 'ZP53 GP UF', 'ZP53 GP', 'ZP53d EMISSOR', 'ZP53d REDE', 'ZP53d GP UF', 'ZP53d GP',
+    'ZP52 H04', 'ZP52 H01',
+    'ZP73 CLIENTE', 'ZP73 REDE',
+    'ZP39 Emissor H12', 'ZP39 Emissor H10', 'ZP39 Subrede H12', 'ZP39 GP UF H12',
+    'ZP39d Emissor H12', 'ZP39d Emissor H10', 'ZP39d Subrede H12', 'ZP39d GP UF H12'
+]
+
+col_int = ['Unid/CX']
+col_2d = ['kg/Un', 'LSV'] + col_cinza + col_c_escuro + col_azul
+col_8d = col_agua
+
+
+# ==============================================================================
+# 2. ESCRITA EM CHUNKS (Rápida e Segura)
+# ==============================================================================
+nome_arquivo_formatado = 'N13_Final_2.0.xlsx'
+writer = pd.ExcelWriter(nome_arquivo_formatado, engine='xlsxwriter')
+
+total_linhas = len(df_n13p_ordenado)
+print(f"📊 Total de linhas a serem salvas: {total_linhas:,}")
+
+tamanho_chunk = 25000
+for i in range(0, total_linhas, tamanho_chunk):
+    chunk = df_n13p_ordenado.iloc[i : i + tamanho_chunk]
+    if i == 0:
+        chunk.to_excel(writer, sheet_name='Valoracao', index=False, startrow=0, header=True)
+    else:
+        chunk.to_excel(writer, sheet_name='Valoracao', index=False, startrow=i + 1, header=False)
+
+workbook  = writer.book
+worksheet = writer.sheets['Valoracao']
+
+
+# ==============================================================================
+# 3. CRIAÇÃO DE ESTILOS E FONTES CORPORATIVAS (Mars Centra)
+# ==============================================================================
+# Base de Estilos dos Cabeçalhos (sem bordas laterais por padrão para visual limpo)
+estilo_header = {'bold': True, 'top': 1, 'bottom': 1, 'align': 'center', 'valign': 'vcenter', 'font_name': 'Mars Centra'}
+
+# Cabeçalhos Coloridos
+fmt_branco   = workbook.add_format({**estilo_header, 'bg_color': '#FFFFFF', 'font_color': '#000000'}) 
+fmt_roxo     = workbook.add_format({**estilo_header, 'bg_color': "#A02B93", 'font_color': "#FFFFFF"})
+fmt_vermelho = workbook.add_format({**estilo_header, 'bg_color': "#FF0000", 'font_color': "#FFFFFF"})
+fmt_azul     = workbook.add_format({**estilo_header, 'bg_color': "#0070C0", 'font_color': "#FFFFFF"})
+fmt_cinza    = workbook.add_format({**estilo_header, 'bg_color': "#D9D9D9", 'font_color': "#000000"})
+fmt_c_escuro = workbook.add_format({**estilo_header, 'bg_color': "#808080", 'font_color': "#FFFFFF"})
+fmt_agua     = workbook.add_format({**estilo_header, 'bg_color': "#CAEDFB", 'font_color': "#000000"})
+fmt_verde    = workbook.add_format({**estilo_header, 'bg_color': "#06E92C", 'font_color': "#000000"})
+
+# Formatos de Borda de Cabeçalho Especiais para o "Box" do N13P
+fmt_header_n13p_inicio = workbook.add_format({**estilo_header, 'bg_color': '#FFFFFF', 'font_color': '#000000', 'left': 1})
+fmt_header_n13p_meio   = workbook.add_format({**estilo_header, 'bg_color': '#FFFFFF', 'font_color': '#000000'})
+fmt_header_n13p_fim    = workbook.add_format({**estilo_header, 'bg_color': '#FFFFFF', 'font_color': '#000000', 'right': 1})
+
+# Formatos para Células de Dados (Corpo da Planilha)
+fmt_texto_padrao   = workbook.add_format({'font_name': 'Mars Centra'})
+fmt_integer_2      = workbook.add_format({'num_format': '0', 'font_name': 'Mars Centra'})
+fmt_decimal_2      = workbook.add_format({'num_format': '0.00', 'font_name': 'Mars Centra'})
+fmt_decimal_8      = workbook.add_format({'num_format': '0.00000000', 'font_name': 'Mars Centra'})
+
+# FORMATO DA DIVISÓRIA VERTICAL MESTRE (Aplica uma linha à direita até o final)
+fmt_divisao_coluna = workbook.add_format({'font_name': 'Mars Centra', 'right': 1})
+
+
+# ==============================================================================
+# 4. MAPEAMENTO DE ÍNDICE DE TRANSIÇÃO (N13P para Produtos)
+# ==============================================================================
+# Unimos as colunas básicas brancas e as dinâmicas de períodos (que formam o grupo N13P)
+colunas_n13p_totais = col_branco + colunas_periodos
+indices_n13p = [df_n13p_ordenado.columns.get_loc(col) for col in colunas_n13p_totais if col in df_n13p_ordenado.columns]
+idx_divisao = max(indices_n13p) if indices_n13p else -1
+
+
+# ==============================================================================
+# 5. APLICAÇÃO DOS FORMATOS, BORDAS E LARGURAS INTELIGENTES
+# ==============================================================================
+print("\n🎨 Aplicando estilos de bordas, cores e fontes corporativas...")
+for col_num, col_nome in enumerate(df_n13p_ordenado.columns):
     
-    for col in rule.key_components:
-        # --- NOVIDADE: VERIFICAÇÃO INTELIGENTE DE COLUNA VS CONSTANTE ---
-        if col in df_ciclo_n13.columns:
-            # Se for uma coluna real, puxa os dados e trata
-            serie = df_ciclo_n13[col].astype(str).str.strip()
-            
-            # Aplica fatiamento de caracteres se definido (ex: [:10])
-            if rule.slice_limits and col in rule.slice_limits:
-                limit = rule.slice_limits[col]
-                serie = serie.str[:limit]
+    # 1. Definição do formato visual do cabeçalho (Box do N13P vs Outras colunas)
+    if col_num in indices_n13p:
+        if col_num == 0:
+            formato_cabecalho = fmt_header_n13p_inicio
+        elif col_num == idx_divisao:
+            formato_cabecalho = fmt_header_n13p_fim
         else:
-            # Se não for uma coluna (como ' ' ou '_'), cria uma série com o caractere repetido para cada linha
-            # Isso impede o KeyError de acontecer!
-            serie = pd.Series([col] * len(df_ciclo_n13), index=df_ciclo_n13.index)
-            
-        key_series_list.append(serie)
-    
-    # Concatena os componentes da chave usando '_' como separador
-    chave_composta = key_series_list[0]
-    for serie_adicional in key_series_list[1:]:
-        chave_composta = chave_composta + '_' + serie_adicional
-        
-    # Mapeia contra o dicionário da ZP e divide por 100
-    df_ciclo_n13[rule.target_column] = (chave_composta.map(dic_zp54).fillna(0.0) / 100)
-    colunas_calculadas.append(rule.target_column)
-
-# 3. Resolução hierárquica automática
-df_ciclo_n13['ZP54'] = df_ciclo_n13[colunas_calculadas[0]]
-
-for col in colunas_calculadas[1:]:
-    df_ciclo_n13['ZP54'] = df_ciclo_n13['ZP54'].fillna(df_ciclo_n13[col])
-
-df_ciclo_n13['ZP54'] = df_ciclo_n13['ZP54'].round(4)
-
-tempo_zp54 = time.time() - inicio_zp54
-print(f"✅ ZP54 processed dynamically with separator-safety in {tempo_zp54:.2f}s!")
-
-
-
-
-
-
-    # -------------------------------------------------------------------------
-    # CONCATENAÇÃO INTELIGENTE DE CHAVES (Evita sublinhados duplos ao redor de espaços)
-    # -------------------------------------------------------------------------
-    chave_composta = key_series_list[0]
-    
-    for i in range(1, len(key_series_list)):
-        componente_atual = rule.key_components[i]
-        componente_anterior = rule.key_components[i - 1]
-        
-        # Regra: Se o componente atual ou o anterior for apenas um espaço em branco " ",
-        # nós juntamos eles DIRETAMENTE (sem adicionar o sublinhado "_")
-        if componente_atual == " " or componente_anterior == " ":
-            chave_composta = chave_composta + key_series_list[i]
+            formato_cabecalho = fmt_header_n13p_meio
+    else:
+        # Outras Colunas (Sem bordas laterais nos cabeçalhos)
+        if col_nome in col_roxo:
+            formato_cabecalho = fmt_roxo
+        elif col_nome == col_vermelho:
+            formato_cabecalho = fmt_vermelho
+        elif col_nome in col_azul:
+            formato_cabecalho = fmt_azul
+        elif col_nome in col_agua:
+            formato_cabecalho = fmt_agua
+        elif col_nome in col_cinza:
+            formato_cabecalho = fmt_cinza
+        elif col_nome in col_c_escuro:
+            formato_cabecalho = fmt_c_escuro
+        elif col_nome.startswith('GSV R$'):
+            formato_cabecalho = fmt_verde
         else:
-            # Caso contrário, junta usando o sublinhado padrão
-            chave_composta = chave_composta + '_' + key_series_list[i]
+            formato_cabecalho = fmt_branco
+        
+    # Escreve o cabeçalho estilizado
+    worksheet.write(0, col_num, col_nome, formato_cabecalho)
+    
+    # 2. Auto-ajuste de largura baseado na amostra de dados
+    max_comprimento_dados = df_n13p_ordenado[col_nome].head(30000).astype(str).str.len().max()
+    largura = max(len(col_nome), max_comprimento_dados) + 3
+    largura = min(largura, 50)
+    
+    # 3. Aplicação do formato de dados das células do corpo
+    # Se for a coluna divisória mestre, aplica a borda direita até o final
+    if col_num == idx_divisao:
+        worksheet.set_column(col_num, col_num, largura, fmt_divisao_coluna)
+    # Formatação numérica padrão para as demais colunas
+    elif col_nome in col_2d and df_n13p_ordenado[col_nome].dtype in [np.float64, np.float32]:
+        worksheet.set_column(col_num, col_num, largura, fmt_decimal_2)
+    elif col_nome in col_8d and df_n13p_ordenado[col_nome].dtype in [np.float64, np.float32]:
+        worksheet.set_column(col_num, col_num, largura, fmt_decimal_8)
+    elif col_nome in col_int and df_n13p_ordenado[col_nome].dtype in [np.int64, np.int32]:
+        worksheet.set_column(col_num, col_num, largura, fmt_integer_2)
+    else:
+        worksheet.set_column(col_num, col_num, largura, fmt_texto_padrao)
+
+# Fecha e salva a planilha finalizada
+writer.close()
+
+fim_export = time.time()
+tempo_exportacao = fim_export - inicio_export
+
+print("\n===== 🏆 ARQUIVO ESTILIZADO SALVO COM SUCESSO! =====")
+print(f"⏱️ Tempo total de processamento: {tempo_exportacao:.2f} segundos")
+print(f"💾 Arquivo salvo como: {Path(nome_arquivo_formatado).resolve()}")
