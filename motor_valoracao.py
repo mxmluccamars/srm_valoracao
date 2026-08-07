@@ -465,20 +465,6 @@ def carregar_e_validar_dados(arquivos_carregados, ciclo):
         df_impostos_padrao = df_impostos_limpo[colunas_padrao].copy()
         df_impostos_padrao.dropna(subset=['Chave'], inplace=True)
 
-        # df com os impostos de IPI
-
-        colunas_NCM = ['NCM', 'Aliq_IPI']
-
-        df_IPI = df_impostos_limpo[colunas_NCM].copy()
-        df_IPI.dropna(subset=['NCM'], inplace=True)
-
-        # df com os impostos de PMPF (imposto MG)
-
-        colunas_PMPF = ['FAMILY PRICE', 'Size * CDA', 'PMPF/kg (R$)','PMPF (R$)']
-
-        df_PMPF = df_impostos_limpo[colunas_PMPF].copy()
-        df_PMPF.dropna(subset=['FAMILY PRICE'], inplace=True)
-
         # df com os impostos exceções
         colunas_excecao = [
             'exc_Chave', 'exc_Sub_Brand', 'exc_UF_Origem', 'exc_UF_Destino',
@@ -495,5 +481,512 @@ def carregar_e_validar_dados(arquivos_carregados, ciclo):
     except Exception as e:
         raise Exception(f"Erro ao ler o arquivo BASE IMPOSTOS: {str(e)}")
 
-    return df_n13p, df_produtos, df_clientes, df_zp55, df_zp54, df_zp53, df_zp52, df_zp73, df_zp70, df_zp39, df_impostos_padrao, df_IPI, df_PMPF, df_impostos_excecao
+    dataframes = {
+        'n13p': df_n13p,
+        'produtos': df_produtos,
+        'clientes': df_clientes,
+        'zp55': df_zp55,
+        'zp54': df_zp54,
+        'zp53': df_zp53,
+        'zp52': df_zp52,
+        'zp73': df_zp73,
+        'zp70': df_zp70,
+        'zp39': df_zp39,
+        'impostos_padrao': df_impostos_padrao,
+        'zf': df_alc_zf,
+        'impostos_excecao': df_impostos_excecao,
+        'periodo': periodo,
+        'ano': ano
+    }
+
+    return dataframes
+
+def calcular_descontos_zps(df_n13p, df_zp55, df_zp54, df_zp53, df_zp52, df_zp73, df_zp70, df_zp39, periodo, ano):
+    """
+    Recebe os DataFrames de valoração e de ZPs e calcula os descontos em cascata.
+    A lógica de prioridade será construída aqui.
+    """
+    try:
+        # ZP55
+        try:
+            # criação do dicionário de chaves
+
+            df_zp55_limpo = df_zp55.drop_duplicates(subset=['CHAVE'], keep='first').copy()
+            df_zp55_limpo['CHAVE'] = df_zp55_limpo['CHAVE'].astype(str).str.strip()
+            dic_zp55 = df_zp55_limpo.set_index('CHAVE')['Cadastro'].to_dict()
+
+
+            # chaves de busca
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            hierarquia = df_n13p['Hierarquia'].astype(str).str.strip()
+            cd = df_n13p['CD'].astype(str).str.strip()
+            uf = df_n13p['UF DESTINO'].astype(str).str.strip()
+            origem = df_n13p['Origem'].astype(str).str.strip()
+            ncm = df_n13p['NCM'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente + '_' + hierarquia                  # CLIENTE
+            chave_2 = company_code + '_' + cod_cliente + '_' + hierarquia.str[:10]         # CLIENTE H05
+            chave_3 = cd + '_' + uf + '_' + origem                                         # CD + UF + Importação
+            chave_4 = cd + '_' + uf + '_' + ncm                                            # CD + UF + NCM
+            chave_5 = cd + '_' + uf + '_' + hierarquia.str[:10]                            # CD + UF + H05
+
+
+            # montagem das colunas
+            df_n13p['ZP55 CLIENTE'] = chave_1.map(dic_zp55) / 100
+            df_n13p['ZP55 CLIENTE H05'] = chave_2.map(dic_zp55) / 100
+            df_n13p['ZP55 CD + UF DESTINO + Importação'] = chave_3.map(dic_zp55) / 100
+            df_n13p['ZP55 CD + UF DESTINO + NCM'] = chave_4.map(dic_zp55) / 100
+            df_n13p['ZP55 CD + UF DESTINO + H05'] = chave_5.map(dic_zp55) / 100
+
+            # aplicação das regras
+            df_n13p['ZP55'] = (df_n13p['ZP55 CLIENTE']
+                            .fillna(df_n13p['ZP55 CLIENTE H05'])
+                            .fillna(df_n13p['ZP55 CD + UF DESTINO + Importação'])
+                            .fillna(df_n13p['ZP55 CD + UF DESTINO + NCM'])
+                            .fillna(df_n13p['ZP55 CD + UF DESTINO + H05'])
+                            .fillna(0)  # caso nenhuma das chaves seja encontrada
+                            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP55: {str(e)}")
+
+        # ZP54
+        try:
+            # criação do dicionário de chaves
+            df_zp54_limpo = df_zp54.drop_duplicates(subset=['CHAVE'], keep='first').copy()
+            df_zp54_limpo['CHAVE'] = df_zp54_limpo['CHAVE'].astype(str).str.strip()
+            dic_zp54 = df_zp54_limpo.set_index('CHAVE')['Cadastro'].to_dict()
+
+            # chaves de buscas
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            cod_subrede = df_n13p['COD SUBREDE'].astype(str).str.strip()
+            cod_gp = df_n13p['COD GP'].astype(str).str.strip()
+            uf = df_n13p['UF DESTINO'].astype(str).str.strip()
+            hierarquia = df_n13p['Hierarquia'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente + '_' + hierarquia                       # CLIENTE
+            chave_2 = company_code + '_' + cod_subrede + '_' + hierarquia                       # REDE
+            chave_3 = company_code + '_' + cod_gp + ' ' + uf + '_' + hierarquia                 # GP UF HIER 6
+            chave_4 = company_code + '_' + cod_gp + ' ' + uf + '_' + hierarquia.str[:10]        # GP UF HIER 5
+
+            # montagem das colunas
+            df_n13p['ZP54 CLIENTE'] = chave_1.map(dic_zp54) / 100
+            df_n13p['ZP54 REDE'] = chave_2.map(dic_zp54) / 100
+            df_n13p['ZP54 GP UF HIER 6'] = chave_3.map(dic_zp54) / 100
+            df_n13p['ZP54 GP UF HIER 5'] = chave_4.map(dic_zp54) / 100
+
+            # aplicação das regras
+            df_n13p['ZP54'] = (df_n13p['ZP54 CLIENTE']
+                            .fillna(df_n13p['ZP54 REDE'])
+                            .fillna(df_n13p['ZP54 GP UF HIER 6'])
+                            .fillna(df_n13p['ZP54 GP UF HIER 5'])
+                            .fillna(0) # Caso não encontre nenhuma regra
+                            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP54: {str(e)}")
+
+        # GSV
+        try:
+            # GSV = LSV * (1 + ZP55) * (1 + ZP54)
+            df_n13p['GSV/CDA'] = df_n13p['LSV'] * (1 + df_n13p['ZP55']) * (1 + df_n13p['ZP54'])
+
+            coluna_gsv_cda = df_n13p['GSV/CDA'] 
+            coluna_kg_un = df_n13p['kg/Un'] 
+            coluna_unid_cda = df_n13p['Unid/CX']
+            denominador_peso = coluna_kg_un * coluna_unid_cda
+
+            # GSV/TON = (GSV/CDA) / (kg/Un * Unid/CX) * 1000
+            df_n13p['GSV/TON'] = np.where(
+                (denominador_peso == 0) | (denominador_peso.isna()),
+                np.nan,                                
+                (coluna_gsv_cda / denominador_peso) * 1000           
+            )
+
+            colunas_periodos = [f'P{i:02d}-{ano}' for i in range(periodo, 14)]
+
+            # Projeçoes dinâmicas
+            for p in colunas_periodos:
+                
+                nome_coluna_projecao = f'GSV R$ {p}'
+                
+                df_n13p[nome_coluna_projecao] = df_n13p[p] * df_n13p['GSV/TON']
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna GSV: {str(e)}")
+
+        # ZP53
+        try:
+            # limpeza das colunas e criação do dicionário de chaves
+            df_zp53_limpo = df_zp53.drop_duplicates(subset=['Chaves'], keep='first').copy()
+            df_zp53_limpo['Chaves'] = df_zp53_limpo['Chaves'].astype(str).str.strip()
+            dic_zp53_cadastro = df_zp53_limpo.set_index('Chaves')['Cadastro'].to_dict()
+            dic_zp53_validade = df_zp53_limpo.set_index('Chaves')["Fim"].to_dict()
+
+            # chaves de busca
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            cod_subrede = df_n13p['COD SUBREDE'].astype(str).str.strip()
+            cod_gp = df_n13p['COD GP'].astype(str).str.strip() # Ajustado para o nome oficial correto
+            uf = df_n13p['UF DESTINO'].astype(str).str.strip()
+            hierarquia = df_n13p['Hierarquia'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente + '_' + hierarquia                       # EMISSOR
+            chave_2 = company_code + '_' + cod_subrede + '_' + hierarquia                       # REDE
+            chave_3 = company_code + '_' + cod_gp + ' ' + uf + '_' + hierarquia                 # GP UF
+            chave_4 = company_code + '_' + cod_gp + '_' + hierarquia.str[:10]                   # GP
+
+            # busca e aplicação das chaves de valores
+            df_n13p['ZP53 EMISSOR'] = chave_1.map(dic_zp53_cadastro) / 100
+            df_n13p['ZP53 REDE'] = chave_2.map(dic_zp53_cadastro) / 100
+            df_n13p['ZP53 GP UF'] = chave_3.map(dic_zp53_cadastro) / 100
+            df_n13p['ZP53 GP'] = chave_4.map(dic_zp53_cadastro) / 100
+
+            df_n13p['ZP53'] = (df_n13p['ZP53 EMISSOR']
+                            .fillna(df_n13p['ZP53 REDE'])
+                            .fillna(df_n13p['ZP53 GP UF'])
+                            .fillna(df_n13p['ZP53 GP'])
+                            .fillna(0) # Se não encontrar correspondência, adota 0
+                            )
+
+            # busca e aplicação das chaves de datas de validade
+            df_n13p['ZP53d EMISSOR'] = chave_1.map(dic_zp53_validade)
+            df_n13p['ZP53d REDE'] = chave_2.map(dic_zp53_validade)
+            df_n13p['ZP53d GP UF'] = chave_3.map(dic_zp53_validade)
+            df_n13p['ZP53d GP'] = chave_4.map(dic_zp53_validade)
+
+            df_n13p['ZP53d'] = (df_n13p['ZP53d EMISSOR']
+                                .fillna(df_n13p['ZP53d REDE'])
+                                .fillna(df_n13p['ZP53d GP UF'])
+                                .fillna(df_n13p['ZP53d GP'])
+                            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP53: {str(e)}")
+
+        # ZP52
+        try:
+            # criação do dicionário de chaves
+            df_zp52_limpo = df_zp52.drop_duplicates(subset=['Chaves'], keep='first').copy()
+            df_zp52_limpo['Chaves'] = df_zp52_limpo['Chaves'].astype(str).str.strip()
+            dic_zp52 = df_zp52_limpo.set_index('Chaves')['Cadastro'].to_dict()
+
+            # cahves de busca
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            cod_subrede = df_n13p['COD SUBREDE'].astype(str).str.strip()
+            hierarquia = df_n13p['Hierarquia'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente + '_' + hierarquia.str[:8]              # H04
+            chave_2 = company_code + '_' + cod_subrede + '_' + hierarquia.str[:2]              # H01
+
+
+            # busca e aplicação de prioridades
+            df_n13p['ZP52 H04'] = chave_1.map(dic_zp52) / 100
+            df_n13p['ZP52 H01'] = chave_2.map(dic_zp52) / 100
+
+            df_n13p['ZP52'] = (df_n13p['ZP52 H04']
+                            .fillna(df_n13p['ZP52 H01'])
+                            .fillna(0) # Adota 0 caso nenhuma regra combine
+                            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP52: {str(e)}")
+
+        # ZP73
+        try:
+            # criação do dicionário de chaves
+            df_zp73_limpo = df_zp73.drop_duplicates(subset=['CHAVE'], keep='first').copy()
+            df_zp73_limpo['CHAVE'] = df_zp73_limpo['CHAVE'].astype(str).str.strip()
+            dic_zp73 = df_zp73_limpo.set_index('CHAVE')['Cadastro'].to_dict()
+
+            # chaves de busca
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            cod_subrede = df_n13p['COD SUBREDE'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente                                        # CLIENTE
+            chave_2 = company_code + '_' + cod_subrede                                        # REDE
+
+            # busca e aplicação das regras
+            df_n13p['ZP73 CLIENTE'] = (chave_1.map(dic_zp73) / 100)
+            df_n13p['ZP73 REDE'] = (chave_2.map(dic_zp73) / 100)
+
+            df_n13p['ZP73'] = (df_n13p['ZP73 CLIENTE']
+                            .fillna(df_n13p['ZP73 REDE'])
+                            .fillna(0) # Adota 0 caso nenhuma regra combine
+                            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP73: {str(e)}")
         
+        # ZP70
+        try:
+            # criação do dicionário de chaves
+            df_zp70_limpo = df_zp70.drop_duplicates(subset=['CONDICAO DE PAGAMENTO'], keep='first').copy()
+            df_zp70_limpo['CONDICAO DE PAGAMENTO'] = df_zp70_limpo['CONDICAO DE PAGAMENTO'].astype(str).str.strip()
+            dic_zp70 = df_zp70_limpo.set_index('CONDICAO DE PAGAMENTO')['Desconto'].to_dict()
+
+            # chaves de busca
+            chave_cond_pag = df_n13p['COND. PAG'].astype(str).str.strip()
+
+            # busca e aplicação das regras de desconto
+            df_n13p['ZP70'] = chave_cond_pag.map(dic_zp70)
+            df_n13p['ZP70'] = df_n13p['ZP70'].fillna(0)
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP70: {str(e)}")
+
+
+        # ZP39
+        try:
+            # criação do dicionário de chaves
+            df_zp39_limpo = df_zp39.drop_duplicates(subset=['CHAVE'], keep='first').copy()
+            df_zp39_limpo['CHAVE'] = df_zp39_limpo['CHAVE'].astype(str).str.strip()
+            dic_zp39_cadastro = df_zp39_limpo.set_index('CHAVE')['Cadastro'].to_dict()
+            dic_zp39_validade = df_zp39_limpo.set_index('CHAVE')["Fim"].to_dict()
+
+            # chaves de busca
+            company_code = df_n13p['Company Code'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            cod_subrede = df_n13p['COD SUBREDE'].astype(str).str.strip()
+            cod_gp = df_n13p['COD GP'].astype(str).str.strip() # Ajustado para o nome oficial correto
+            uf = df_n13p['UF DESTINO'].astype(str).str.strip()
+            hierarquia = df_n13p['Hierarquia'].astype(str).str.strip()
+
+            chave_1 = company_code + '_' + cod_cliente + '_' + hierarquia                       # Emissor H12
+            chave_2 = company_code + '_' + cod_cliente + '_' + hierarquia.str[:10]              # Emissor H10
+            chave_3 = company_code + '_' + cod_subrede + '_' + hierarquia                       # Subrede H12
+            chave_4 = company_code + '_' + cod_gp + ' ' + uf + '_' + hierarquia                 # GP UF H12
+
+            # busca e aplicação das regras de desconto
+            df_n13p['ZP39 Emissor H12'] = (chave_1.map(dic_zp39_cadastro) / 100)
+            df_n13p['ZP39 Emissor H10'] = (chave_2.map(dic_zp39_cadastro) / 100)
+            df_n13p['ZP39 Subrede H12'] = (chave_3.map(dic_zp39_cadastro) / 100)
+            df_n13p['ZP39 GP UF H12'] = (chave_4.map(dic_zp39_cadastro) / 100)
+
+            df_n13p['ZP39'] = (df_n13p['ZP39 Emissor H12']
+                                .fillna(df_n13p['ZP39 Emissor H10'])
+                                .fillna(df_n13p['ZP39 Subrede H12'])
+                                .fillna(df_n13p['ZP39 GP UF H12'])
+                                .fillna(0) # Se não encontrar, assume 0
+                                )
+
+            # busca e aplicação das datas de validade
+            df_n13p['ZP39d Emissor H12'] = chave_1.map(dic_zp39_validade)
+            df_n13p['ZP39d Emissor H10'] = chave_2.map(dic_zp39_validade)
+            df_n13p['ZP39d Subrede H12'] = chave_3.map(dic_zp39_validade)
+            df_n13p['ZP39d GP UF H12'] = chave_4.map(dic_zp39_validade)
+
+            df_n13p['ZP39d'] = (df_n13p['ZP39d Emissor H12']
+                                .fillna(df_n13p['ZP39d Emissor H10'])
+                                .fillna(df_n13p['ZP39d Subrede H12'])
+                                .fillna(df_n13p['ZP39d GP UF H12'])
+                                .fillna('NaN')
+                                )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ZP39: {str(e)}")
+
+
+        # NIV
+        try:
+            # multiplicação
+            df_n13p['NIV/CDA'] = (
+                df_n13p['GSV/CDA'] * 
+                (1 + df_n13p['ZP53']) * 
+                (1 + df_n13p['ZP52']) * 
+                (1 + df_n13p['ZP73']) * 
+                (1 + df_n13p['ZP70']) * 
+                (1 + df_n13p['ZP39'])
+            )
+
+            # colunas usadas na conversão
+            coluna_niv_cda = df_n13p['NIV/CDA']
+            coluna_kg_un = df_n13p['kg/Un']       # Usando o nome exato da sua coluna: 'kg/Un'
+            coluna_unid_cda = df_n13p['Unid/CX']  # Usando o nome exato da sua coluna: 'Unid/CX'
+            denominador_peso = coluna_kg_un * coluna_unid_cda
+
+            # divisão
+            df_n13p['NIV/TON'] = np.where(
+                (denominador_peso == 0) | (denominador_peso.isna()),
+                np.nan,                                
+                (coluna_niv_cda / denominador_peso) * 1000           
+            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna NIV: {str(e)}")
+
+        return df_n13p
+
+    except Exception as e:
+        raise Exception(f"Erro no cálculo de descontos (ZPs): {str(e)}")
+
+
+def calcular_impostos_fiscais(df_n13p, df_impostos_padrao, df_alc_zf,df_impostos_excecao):
+    """
+    Calcula as alíquotas de ICMS (com regras de exceção), PIS, COFINS e IPI.
+    """
+    try:
+        try:    
+            # CÁLCULO DO ICMS
+            # chaves de busca
+            cd = df_n13p['CD'].astype(str).str.strip()
+            cod_cliente = df_n13p['COD_CLIENTE'].astype(str).str.strip()
+            subbrand = df_n13p['Subbrand'].astype(str).str.strip()
+            uf_origem = df_n13p['UF ORIGEM'].astype(str).str.strip()
+            uf_destino = df_n13p['UF DESTINO'].astype(str).str.strip()
+
+            # dicionários de busca
+            dic_alc_zf = df_alc_zf.set_index('CHAVE EMISSOR')['Regra'].to_dict()
+            dic_icms_padrao = df_impostos_padrao.set_index('Chave')['Aliq_ICMS'].to_dict()
+            dic_icms_exc = df_impostos_excecao.set_index('exc_Chave')['exc_Aliq_ICMS'].to_dict()
+
+            # busca na zona franca
+            chave_alc_zf = cod_cliente + cd
+            val_zf = chave_alc_zf.map(dic_alc_zf)
+
+            # busca na padrão
+            chave_icms_padrao = uf_origem + uf_destino
+            val_icms_padrao = chave_icms_padrao.map(dic_icms_padrao)
+
+            # busca na exceção
+            chave_icms_exc = subbrand + uf_origem + uf_destino
+            val_icms_exc = chave_icms_exc.map(dic_icms_exc)
+
+            # regras de aplicação
+
+            # zf
+            resultado_r1 = val_zf
+
+            # exceção de PED e SHE
+            cond_r2 = df_n13p['Subbrand'].isin(["PED DTX", "SHE SCKS"])
+            resultado_r2 = val_icms_exc.where(cond_r2)
+
+            # excecão de FILEZITOS
+            cond_r3 = (df_n13p['Subbrand'] == 'PED FILEZITOS') & (df_n13p['CD'] == 'BR31') & (df_n13p['UF DESTINO'].isin(['ES', 'MG']))
+            resultado_r3 = val_icms_exc.where(cond_r3)
+
+            # cascata
+            icms_final = (resultado_r1
+                            .fillna(resultado_r2)
+                            .fillna(resultado_r3)
+                            .fillna(val_icms_padrao)
+                            .fillna(0)
+                        )
+
+            df_n13p['ICMS'] = icms_final
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna ICMS: {str(e)}")
+
+        # CÁLCULO DO PIS
+        try:
+            # criação do dicionário de chaves
+            dic_pis = df_impostos_padrao.set_index('Chave')['Aliq_PIS'].to_dict()
+
+            # chaves de busca
+            uf_origem = df_n13p['UF ORIGEM'].astype(str).str.strip()
+            uf_destino = df_n13p['UF DESTINO'].astype(str).str.strip()
+            chave_1 = uf_origem + uf_destino
+
+            # busca
+            df_n13p['PIS'] = (chave_1.map(dic_pis)).fillna(0)
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna PIS: {str(e)}")
+
+        # CÁLCULO DO COFINS
+        try:
+            # criação do dicionário de chaves
+            dic_cofins = df_impostos_padrao.set_index('Chave')['Aliq_Cofins'].to_dict()
+
+            # chaves de busca
+            uf_origem = df_n13p['UF ORIGEM'].astype(str).str.strip()
+            uf_destino = df_n13p['UF DESTINO'].astype(str).str.strip()
+            chave_1 = uf_origem + uf_destino
+
+            # busca
+            df_n13p['COFINS'] = (chave_1.map(dic_cofins)).fillna(0)
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna COFINS: {str(e)}")
+
+        # CÁLCULO NF PRAZO
+        try:
+            # denominador da conversão
+            denominador_cda = (1 - df_n13p['ICMS'])
+
+            # divisão segura
+            df_n13p['NF PRAZO/CDA'] = np.where(
+                denominador_cda == 0,
+                np.nan,
+                (df_n13p['NIV/CDA'] / denominador_cda) * (1 - df_n13p['PIS'] - df_n13p['COFINS'])
+            )
+
+
+            coluna_nf_prazo = df_n13p['NF PRAZO/CDA']
+            coluna_kg_un = df_n13p['kg/Un']       # Usando o nome exato da sua coluna: 'kg/Un'
+            coluna_unid_cda = df_n13p['Unid/CX']  # Usando o nome exato da sua coluna: 'Unid/CX'
+
+            denominador_peso = coluna_kg_un * coluna_unid_cda
+
+            # divisão segura
+            df_n13p['NF PRAZO/TON'] = np.where(
+                (denominador_peso == 0) | (denominador_peso.isna()),
+                np.nan,                                
+                (coluna_nf_prazo / denominador_peso)
+            )
+
+        except Exception as e:
+            raise Exception(f"Erro no cálculo da coluna NF PRAZO: {str(e)}")
+
+        return df_n13p
+
+    except Exception as e:
+        # Captura o erro específico de uma das etapas e o levanta
+        raise Exception(f"Erro no cálculo de impostos fiscais: {e}")
+
+
+def executar_motor_valoracao(arquivos_carregados, ciclo):
+    """
+    Orquestra todo o fluxo de dados, desde a carga até o cálculo final.
+    """
+    try:
+        # validação dos arquivos
+        dfs = carregar_e_validar_dados(arquivos_carregados, ciclo)
+        print("✅ Etapa 1/3: Carga e validação dos dados concluída.")
+
+        # calculos das zps
+        dfs['n13p'] = calcular_descontos_zps(
+            df_n13p = dfs['n13p'],
+            df_zp55 = dfs['zp55'],
+            df_zp54 = dfs['zp54'],
+            df_zp53 = dfs['zp53'],
+            df_zp52 = dfs['zp52'],
+            df_zp73 = dfs['zp73'],
+            df_zp70 = dfs['zp70'],
+            df_zp39 = dfs['zp39'],
+            periodo = ciclo['periodo'],
+            ano = ciclo['ano']
+        )
+        print("✅ Etapa 2/3: Cálculo de descontos comerciais (ZPs) concluído.")
+
+        # impostos
+        dfs['n13p'] = calcular_impostos_fiscais(
+            df_n13p = dfs['n13p'],
+            df_impostos_padrao = dfs['impostos_padrao'],
+            df_alc_zf = dfs['alc_zf'],
+            df_impostos_excecao = dfs['impostos_excecao'],
+        )
+        print("✅ Etapa 3/3: Cálculo de impostos e NF Prazo concluído.")
+        
+        print("🚀 Motor de valoração finalizado com sucesso!")
+        return dfs['n13p']
+
+    except Exception as e:
+        # Captura qualquer erro de qualquer etapa e o levanta para a interface.
+        raise Exception(str(e))
+
+
