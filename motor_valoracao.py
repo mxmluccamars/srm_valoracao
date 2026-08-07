@@ -5,8 +5,11 @@ import numpy as np
 
 def carregar_e_validar_dados(arquivos_carregados, ciclo):
 
-    periodo = ciclo['periodo']
-    ano = ciclo['ano']
+    try:
+        periodo = int(ciclo['periodo'])
+        ano = int(ciclo['ano'])
+    except KeyError:
+        raise Exception("Ciclo inválido. Certifique-se de que 'periodo' e 'ano' estão presentes.")
 
     # Leitura N13P
     try:
@@ -825,7 +828,7 @@ def calcular_descontos_zps(df_n13p, df_zp55, df_zp54, df_zp53, df_zp52, df_zp73,
         raise Exception(f"Erro no cálculo de descontos (ZPs): {str(e)}")
 
 
-def calcular_impostos_fiscais(df_n13p, df_impostos_padrao, df_alc_zf,df_impostos_excecao):
+def calcular_impostos_fiscais(df_n13p, df_impostos_padrao, df_alc_zf, df_impostos_excecao):
     """
     Calcula as alíquotas de ICMS (com regras de exceção), PIS, COFINS e IPI.
     """
@@ -968,8 +971,8 @@ def executar_motor_valoracao(arquivos_carregados, ciclo):
             df_zp73 = dfs['zp73'],
             df_zp70 = dfs['zp70'],
             df_zp39 = dfs['zp39'],
-            periodo = ciclo['periodo'],
-            ano = ciclo['ano']
+            periodo = int(ciclo['periodo']),
+            ano = int(ciclo['ano'])
         )
         print("✅ Etapa 2/3: Cálculo de descontos comerciais (ZPs) concluído.")
 
@@ -977,11 +980,10 @@ def executar_motor_valoracao(arquivos_carregados, ciclo):
         dfs['n13p'] = calcular_impostos_fiscais(
             df_n13p = dfs['n13p'],
             df_impostos_padrao = dfs['impostos_padrao'],
-            df_alc_zf = dfs['alc_zf'],
+            df_alc_zf = dfs['zf'],
             df_impostos_excecao = dfs['impostos_excecao'],
         )
         print("✅ Etapa 3/3: Cálculo de impostos e NF Prazo concluído.")
-        
         print("🚀 Motor de valoração finalizado com sucesso!")
         return dfs['n13p']
 
