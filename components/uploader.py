@@ -9,7 +9,7 @@ def _desenhar_card_compacto(descricao, arquivo_encontrado=None):
     if arquivo_encontrado:
         cor_borda = "#28A745"; icone = "✅"; nome_arquivo = f"`{arquivo_encontrado.name}`"
     else:
-        cor_borda = "#FF1414"; icone = "❌"; nome_arquivo = "Aguardando..."
+        cor_borda = "#FFDB00"; icone = "⚠️"; nome_arquivo = "Aguardando..."
     st.markdown(f'<div style="border-left: 4px solid {cor_borda}; border-radius: 4px; padding: 8px 12px; background-color: #F8F9FA; font-family: sans-serif; margin-bottom: 10px; height: 75px; display: flex; flex-direction: column; justify-content: center;"><p style="margin: 0; padding: 0; font-weight: 600; color: #343A40; font-size: 14px;">{icone} {descricao}</p><small style="color: #6C757D; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nome_arquivo}</small></div>', unsafe_allow_html=True)
 
 def render_uploader():

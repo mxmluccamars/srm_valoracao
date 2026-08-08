@@ -17,7 +17,7 @@ def render_header():
 
     # 2. Lógica para embutir a imagem
     try:
-        with open("assets/header_logo.png", "rb") as f:
+        with open("assets/header_logo_t.png", "rb") as f:
             logo_data = base64.b64encode(f.read()).decode("utf-8")
         logo_html = f'<img src="data:image/png;base64,{logo_data}" style="height: 55px; width: auto;">'
     except FileNotFoundError:
@@ -43,7 +43,7 @@ def render_header():
             .header-container {{
                 position: fixed; top: 0; left: 0;
                 width: 100%; height: 85px;
-                background-color: #FF1414;
+                background-color: #0900A7;
                 display: flex; align-items: center; justify-content: space-between;
                 padding: 10px 2rem;
                 z-index: 999;
