@@ -6,6 +6,9 @@ from components.header import render_header
 from components.uploader import render_uploader
 from components.downloader import render_downloader
 from motor_valoracao import executar_motor_valoracao
+from components.config_styles import apply_global_styles
+
+apply_global_styles()  # Aplica os estilos globais do app
 
 # Inicializa o session_state se ele não existir
 if 'df_resultado' not in st.session_state:
