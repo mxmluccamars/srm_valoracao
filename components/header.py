@@ -5,8 +5,9 @@ import base64
 
 def render_header():
     """
-    Desenha o header fixo no topo da página.
-    Os estilos globais agora são gerenciados por config_styles.py.
+    Desenha o header no topo da página.
+    Este componente agora é "rolável" e não mais fixo.
+    Os estilos globais são gerenciados por config_styles.py.
     """
     # 1. Lógica para embutir a imagem do logo
     try:
@@ -33,19 +34,23 @@ def render_header():
                 box-sizing: border-box;
             }}
             
-            .header-logo {{flex: 1; }}
+            .header-logo {{ 
+                flex: 1; 
+            }}
 
             .header-title {{
                 flex: 2;
                 text-align: center;
                 font-weight: 800 !important; /* EXTRABOLD */
                 font-size: 32px;
-                color: white !important;
+                color: F8F7F2  !important;
             }}
-
+            
             .header-version {{
-                flex: 1; display: flex;
-                justify-content: flex-end; align-items: flex-end;
+                flex: 1;
+                display: flex;
+                justify-content: flex-end;
+                align-items: flex-end;
             }}
 
             .header-version span {{
@@ -64,3 +69,4 @@ def render_header():
         """,
         unsafe_allow_html=True
     )
+

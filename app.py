@@ -1,51 +1,50 @@
 # app.py
 
 import streamlit as st
-import pandas as pd
+
+# Importa os componentes que vamos (re)construir
+from components.config_styles import apply_global_styles
 from components.header import render_header
 from components.uploader import render_uploader
-from components.downloader import render_downloader
-from motor_valoracao import executar_motor_valoracao
-from components.config_styles import apply_global_styles
+# Futuramente, importaremos outros componentes aqui
 
-apply_global_styles()  # Aplica os estilos globais do app
+# --- 1. CONFIGURAÇÃO INICIAL E MÁQUINA DE ESTADOS ---
 
-# Inicializa o session_state se ele não existir
-if 'df_resultado' not in st.session_state:
-    st.session_state['df_resultado'] = None
+# Aplica os estilos globais (fundo, fontes) e a configuração da página.
+# Esta deve ser a PRIMEIRA chamada do Streamlit no seu script.
+apply_global_styles()
 
+# Inicializa o st.session_state na primeira vez que o app é executado
+if 'app_state' not in st.session_state:
+    st.session_state.app_state = 'INITIAL'      # Nosso estado inicial
+    st.session_state.df_resultado = None      # Placeholder para os dados calculados
+    st.session_state.excel_data = None        # Placeholder para o arquivo Excel final
+    st.session_state.error_message = None     # Placeholder para mensagens de erro
+
+# --- 2. RENDERIZAÇÃO DA INTERFACE (VERSÃO INICIAL) ---
+
+# Desenha o header (próximo componente que vamos refazer)
 render_header()
-pronto, arquivos, ciclo = render_uploader()
-st.markdown("---")
 
-if pronto:
-    if st.button("🚀 Processar e Calcular Dados", type="primary", use_container_width=True):
-        try:
-            with st.spinner("Motor de valoração em execução... Isso pode levar alguns minutos."):
-                # Executa o motor e SALVA O RESULTADO NO SESSION_STATE
-                st.session_state['df_resultado'] = executar_motor_valoracao(arquivos, ciclo)
+# Desenha a seção de upload de arquivos
+# A função render_uploader() futuramente nos dirá se está tudo pronto para processar
+pronto_para_processar, arquivos_carregados, ciclo_definido = render_uploader()
 
-            st.balloons()
-            st.success("🎉 Processamento do motor concluído com sucesso!")
-        except Exception as e:
-            st.error(f"❌ Ocorreu um erro crítico durante o processamento: {str(e)}")
-            st.session_state['df_resultado'] = None # Limpa em caso de erro
+# Futuramente, aqui entrará a lógica de botões e transição de estados
+# Por enquanto, apenas para teste, podemos mostrar o estado atual
+st.write(f"Estado Atual da Página: **{st.session_state.app_state}**")
 
-# -------------------------------------------------------------------
-# LÓGICA DE EXIBIÇÃO E DOWNLOAD (AGORA FORA DO BOTÃO)
-# -------------------------------------------------------------------
-# Se o resultado já foi calculado e está na memória, mostra a prévia e o downloader
-if st.session_state['df_resultado'] is not None:
-    st.markdown("### 📊 Amostra dos Dados Processados")
-    st.dataframe(st.session_state['df_resultado'].head(50), use_container_width=True)
-    st.markdown("---")
-    
-    # Chama o componente de download, que também usará o session_state
-    render_downloader(st.session_state['df_resultado'], ciclo)
+# Exemplo de como o estado mudará no futuro:
+# if pronto_para_processar and st.session_state.app_state == 'INITIAL':
+    # st.session_state.app_state = 'READY_TO_PROCESS'
+    # st.rerun() # O st.rerun() força a atualização da página para refletir o novo estado
 
-elif pronto:
-    # Mensagem para guiar o usuário se os arquivos estão prontos, mas o processamento não foi rodado
-    st.info("💡 Tudo pronto! Clique no botão acima para iniciar os cálculos.")
-else:
-    # Mensagem inicial
-    st.info("💡 Por favor, carregue todos os arquivos necessários na dashboard acima.")
+
+
+
+
+
+
+
+
+
