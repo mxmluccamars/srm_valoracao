@@ -6,6 +6,9 @@ import streamlit as st
 from components.config_styles import apply_global_styles
 from components.header import render_header
 from components.uploader import render_uploader
+from components.actions import render_action_buttons
+from motor_valoracao import executar_fluxo_completo
+from components.downloader import render_download_section
 # Futuramente, importaremos outros componentes aqui
 
 # --- 1. CONFIGURAÇÃO INICIAL E MÁQUINA DE ESTADOS ---
@@ -34,10 +37,51 @@ pronto_para_processar, arquivos_carregados, ciclo_definido = render_uploader()
 # Por enquanto, apenas para teste, podemos mostrar o estado atual
 st.write(f"Estado Atual da Página: **{st.session_state.app_state}**")
 
-# Exemplo de como o estado mudará no futuro:
-# if pronto_para_processar and st.session_state.app_state == 'INITIAL':
-    # st.session_state.app_state = 'READY_TO_PROCESS'
-    # st.rerun() # O st.rerun() força a atualização da página para refletir o novo estado
+# Atualiza o estado quando os arquivos estão prontos
+if  pronto_para_processar and st.session_state.app_state == 'INITIAL':
+    st.session_state.app_state = 'READY_TO_PROCESS'
+    st.rerun() # Força a atualização para habilitar o botão
+
+# Renderiza os botões e captura se o de processar foi clicado
+if render_action_buttons():
+    # Se o botão foi clicado, muda o estado para PROCESSING
+    st.session_state.app_state = 'PROCESSING'
+    # O st.rerun() aqui é crucial para que na próxima execução,
+    # o app entre na lógica de processamento.
+    st.rerun()
+
+
+# --- LÓGICA DE PROCESSAMENTO (será implementada a seguir) ---
+if st.session_state.app_state == 'PROCESSING':
+    try:
+        with st.spinner("Executando fluxo completo... (Cálculos e Formatação do Relatório)"):
+            # A função agora retorna AMBOS: o df para preview e o excel para download
+            df_calculado, excel_final = executar_fluxo_completo(arquivos_carregados, ciclo_definido)
+            st.session_state.df_resultado = df_calculado
+            st.session_state.excel_data = excel_final
+        
+        st.session_state.app_state = 'DOWNLOAD_READY'
+        st.rerun()
+    except Exception as e:
+        st.session_state.error_message = str(e)
+        st.session_state.app_state = 'ERROR'
+        st.rerun()
+
+
+# --- 4. RENDERIZAÇÃO DAS SEÇÕES DE RESULTADO ---
+
+# Se o download está pronto, chama o componente de download
+if st.session_state.app_state == 'DOWNLOAD_READY':
+    render_download_section(
+        df_resultado=st.session_state.df_resultado,
+        excel_data=st.session_state.excel_data,
+        ciclo=ciclo_definido
+    )
+
+# Se deu erro, mostra a mensagem
+if st.session_state.app_state == 'ERROR':
+    st.error(f"❌ Ocorreu um erro crítico: {st.session_state.error_message}")
+
 
 
 

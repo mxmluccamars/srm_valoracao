@@ -30,7 +30,8 @@ def apply_global_styles():
             
             /* Define a cor de fundo universal como branca */
             [data-testid="stAppViewContainer"] {
-                background-color: #F8F7F2 ;
+                # background-color: #F8F7F2  ;
+                backgroun-color: #39107B ;
                 color: #F8F7F2 ; /* Cor do texto padrão */
             }
 
@@ -41,9 +42,9 @@ def apply_global_styles():
             }
 
             /* --- 3. REMOÇÃO DA UI PADRÃO DO STREAMLIT --- */
-            div[data-testid="stToolbar"],
-            div[data-testid="stDecoration"],
-            div[data-testid="stStatusWidget"],
+            # div[data-testid="stToolbar"],
+            # div[data-testid="stDecoration"],
+            # div[data-testid="stStatusWidget"],
             #MainMenu,
             header,
             footer {
@@ -55,6 +56,33 @@ def apply_global_styles():
             [data-testid="block-container"] {
                 padding: 0rem;
                 margin: 0rem;
+            }
+
+           /* --- 4. ESTILO DOS BOTÕES DE AÇÃO --- */
+
+            /* Estilo para o botão primário (type="primary") */
+            /* O seletor correto é "stBaseButton-primary" */
+            button[data-testid="stBaseButton-primary"] {
+                background-color: #0900A7; /* Sua cor azul principal */
+                color: white;
+                border: none;
+                height: 3rem;
+                font-weight: 600;
+                transition: all 0.2s ease-in-out; /* Adiciona uma transição suave */
+            }
+            button[data-testid="stBaseButton-primary"]:hover {
+                background-color: #FFDB00;
+                color: #0900A7;
+                border: 1px solid #0900A7;
+                transform: scale(1.02); /* Efeito de crescimento sutil no hover */
+            }
+
+            /* Estilo para o botão quando ele está desabilitado */
+            button[data-testid="stBaseButton-primary"]:disabled {
+                background-color: #F8F7F2; /* Um cinza para indicar inatividade */
+                color: #0900A7;
+                border: none;
+                transform: none; /* Garante que não haja efeito no botão desabilitado */
             }
         </style>
         """,
