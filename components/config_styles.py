@@ -42,9 +42,9 @@ def apply_global_styles():
             }
 
             /* --- 3. REMOÇÃO DA UI PADRÃO DO STREAMLIT --- */
-            # div[data-testid="stToolbar"],
-            # div[data-testid="stDecoration"],
-            # div[data-testid="stStatusWidget"],
+            div[data-testid="stToolbar"],
+            div[data-testid="stDecoration"],
+            div[data-testid="stStatusWidget"],
             #MainMenu,
             header,
             footer {
