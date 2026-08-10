@@ -30,8 +30,8 @@ def apply_global_styles():
             
             /* Define a cor de fundo universal como branca */
             [data-testid="stAppViewContainer"] {
-                # background-color: #F8F7F2  ;
-                backgroun-color: #39107B ;
+                background-color: #F8F7F2  ;
+                # backgroun-color: #39107B ;
                 color: #F8F7F2 ; /* Cor do texto padrão */
             }
 
