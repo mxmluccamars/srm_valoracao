@@ -54,7 +54,7 @@ def render_header():
             }}
 
             .header-version span {{
-                font-weight: 500 !important; /* MEDIUM */
+                font-weight: 500 !important;
                 font-size: 12px;
                 color: rgba(255, 255, 255, 0.7) !important;
                 margin-bottom: 5px;
@@ -64,7 +64,7 @@ def render_header():
         <div class="header-container">
             <div class="header-logo">{logo_html}</div>
             <div class="header-title">SRM Valoração</div>
-            <div class="header-version"><span>v1.0.0</span></div>
+            <div class="header-version"><span>v1.0.0</span></div> 
         </div>
         """,
         unsafe_allow_html=True
