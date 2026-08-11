@@ -1002,7 +1002,8 @@ def _formatar_e_gerar_excel(df_n13p, ciclo):
     try:
         periodo = int(ciclo['periodo'])
         ano = int(ciclo['ano'])
-            
+
+        print("🚀 Formatando os dados...")
         
         # --- ETAPA 1: ORDENAÇÃO DAS COLUNAS ---
         ordem_desejada_colunas = [
@@ -1219,13 +1220,16 @@ def _formatar_e_gerar_excel(df_n13p, ciclo):
         raise Exception(f"Erro ao aplicar os estilos: {str(e)}")
     
     try:
+        print("fecahdo o arquivo Excel...")
         writer.close() 
+        print("✅ Arquivo Excel fechado com sucesso!")
     except Exception as e:
         raise Exception(f"Erro ao fechar o arquivo .xlsx: {str(e)}")
 
 
 
     try:
+        print("retornando o arquivo Excel...")
         return output.getvalue()
     except Exception as e:
         raise Exception(f"Erro ao gerar o arquivo .xlsx: {str(e)}")
@@ -1240,7 +1244,9 @@ def executar_fluxo_completo(arquivos_carregados, ciclo):
     df_resultado = executar_motor_valoracao(arquivos_carregados, ciclo)
 
     # ETAPA 2: Imediatamente passa o resultado para o motor de formatação
+    print("🚀 Iniciando a formatação e geração do arquivo Excel...")
     excel_data = _formatar_e_gerar_excel(df_resultado, ciclo)
+    print("✅ Arquivo Excel gerado com sucesso!")
 
     # Retorna o arquivo Excel pronto
-    return excel_data
+    return df_resultado, excel_data
