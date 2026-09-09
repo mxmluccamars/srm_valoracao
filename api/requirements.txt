@@ -1,0 +1,9 @@
+# Servidor e API
+fastapi
+uvicorn
+python-multipart  # Essencial para o FastAPI conseguir receber arquivos
+
+# Manipulação de Dados
+pandas
+python-calamine   # O motor super rápido que você escolheu para ler Excel
+xlsxwriter        # Para formatar e pintar o Excel final na saída
